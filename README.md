@@ -28,23 +28,39 @@ WhistleDrop is an end-to-end confidential reporting platform engineered accordin
 
 ---
 
-## 📸 Application Screenshots
+## 📸 Application Screenshots (Redesigned Editorial UI)
 
-### 1. Moderator Workspace & Case Operations Queue
-![Moderator Workspace](docs/screenshots/01_moderator_overview_theme.png)
-*High-density operations console displaying live KPIs, severity indicators, and sanitized case queue.*
+### 1. Confidential Whistleblower Submission Portal
+![Confidential Whistleblower Submission Portal](docs/screenshots/01_submit_report_portal.png)
+*Warm editorial public portal with zero login requirement, category selection, and metadata-scrubbed file upload.*
 
-### 2. Case Dossier & Semantic Duplicate Detection
-![Case Dossier Modal](docs/screenshots/02_case_dossier_theme.png)
-*Detailed case view highlighting sanitized narrative, confidence meters, extracted theme tags, and cosine similarity matches.*
+### 2. Live AI Privacy Guardian (PII Redaction Alert)
+![Live AI Privacy Guardian](docs/screenshots/02_pii_privacy_detection.png)
+*Real-time entity scanner flagging sensitive identifiers (emails, names, phone numbers, employee/student IDs) prior to transmission.*
 
-### 3. Confidential Whistleblower Submission Portal
-![Submit Portal](docs/screenshots/03_submit_portal_theme.png)
-*Public portal featuring real-time AI Privacy Guardian scanning and EXIF/metadata-scrubbed file attachment uploads.*
+### 3. Submission Success Modal with Cryptographic Case Code
+![Submission Success Modal](docs/screenshots/03_submission_success_modal.png)
+*High-entropy case tracking code generation (`WD-XXXX-XXXX-XXXX`) with automated AI category prediction and severity rating.*
 
-### 4. Zero-Knowledge Case Tracking Portal
-![Case Tracking Portal](docs/screenshots/04_track_portal_theme.png)
-*Cryptographic case timeline showing milestone status progression and public audit log updates.*
+### 4. Zero-Knowledge Public Case Tracking Portal
+![Case Tracking Portal](docs/screenshots/04_case_tracking_portal.png)
+*Milestone status workflow stepper (`SUBMITTED` ➔ `UNDER_REVIEW` ➔ `RESOLVED`) and transparent investigation activity audit log.*
+
+### 5. Moderator Authentication Modal
+![Moderator Authentication Modal](docs/screenshots/05_moderator_login_modal.png)
+*Secure JWT authentication modal protecting triage and administrative endpoints with authorized credentials.*
+
+### 6. Moderator Case Operations Dashboard
+![Moderator Case Operations Dashboard](docs/screenshots/06_moderator_dashboard.png)
+*Operations console displaying live KPI summary metrics, severity mix distribution, AI accuracy indicators, and the sanitized case queue.*
+
+### 7. Detailed Case Dossier & Intelligence Inspector
+![Detailed Case Dossier Inspector](docs/screenshots/07_case_dossier_inspector.png)
+*Inspector drawer featuring scrubbed incident narrative, AI confidence score, extracted thematic tag cloud, and timeline logs.*
+
+### 8. Semantic Duplicate Matching & Case Closure Actions
+![Semantic Duplicate Matching & Case Closure Actions](docs/screenshots/08_case_closure_and_action.png)
+*Pairwise cosine vector similarity detecting co-related incident submissions alongside the status transition form and permanent case closure controls.*
 
 ---
 
