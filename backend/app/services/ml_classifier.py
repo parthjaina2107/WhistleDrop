@@ -87,7 +87,13 @@ MODEL_FILE = os.path.join(MODEL_DIR, "whistledrop_classifier.joblib")
 class WhistleDropClassifier:
     def __init__(self):
         self.pipeline: Pipeline = None
-        self._train()
+        if os.path.exists(MODEL_FILE):
+            try:
+                self.pipeline = joblib.load(MODEL_FILE)
+            except Exception:
+                self._train()
+        else:
+            self._train()
 
     def _train(self):
         """Trains a high-precision TF-IDF + Multinomial Naive Bayes classifier."""
