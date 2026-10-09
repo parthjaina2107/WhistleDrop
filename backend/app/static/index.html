@@ -19,7 +19,7 @@
     <!-- LEFT SIDEBAR: Deep Forest Pine (#0b241e) -->
     <aside class="sidebar">
       <div class="sidebar-header">
-        <div class="brand" onclick="switchView('mod-overview')">
+        <div class="brand" onclick="switchView('submit')">
           <div class="brand-shield">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
               <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
@@ -28,44 +28,15 @@
           </div>
           <div class="brand-title-wrap">
             <h1 class="brand-name">WhistleDrop</h1>
-            <span class="brand-sub">CASE OPERATIONS</span>
+            <span class="brand-sub">CONFIDENTIAL PORTAL</span>
           </div>
         </div>
       </div>
 
       <!-- Navigation Menus -->
       <nav class="sidebar-nav">
-        <div class="nav-section-label">WORKSPACE</div>
-        <button class="nav-item active" id="nav-case-queue" onclick="switchView('mod-overview')">
-          <span class="nav-icon">📁</span>
-          <span class="nav-text">Case queue</span>
-          <span class="nav-pill" id="sidebar-total-badge">6</span>
-        </button>
-
-        <div class="nav-section-label">IN THIS VIEW</div>
-        <button class="nav-sub-item active" id="filter-view-all" onclick="filterBySidebarStatus('')">
-          <span class="sub-label">All submissions</span>
-          <span class="sub-count" id="sidebar-cnt-all">6</span>
-        </button>
-        <button class="nav-sub-item" id="filter-view-submitted" onclick="filterBySidebarStatus('SUBMITTED')">
-          <span class="sub-label">New submissions</span>
-          <span class="sub-count" id="sidebar-cnt-submitted">2</span>
-        </button>
-        <button class="nav-sub-item" id="filter-view-review" onclick="filterBySidebarStatus('UNDER_REVIEW')">
-          <span class="sub-label">Under review</span>
-          <span class="sub-count" id="sidebar-cnt-review">3</span>
-        </button>
-        <button class="nav-sub-item" id="filter-view-resolved" onclick="filterBySidebarStatus('RESOLVED')">
-          <span class="sub-label">Resolved</span>
-          <span class="sub-count" id="sidebar-cnt-resolved">1</span>
-        </button>
-        <button class="nav-sub-item" id="filter-view-dismissed" onclick="filterBySidebarStatus('DISMISSED')">
-          <span class="sub-label">Dismissed</span>
-          <span class="sub-count" id="sidebar-cnt-dismissed">0</span>
-        </button>
-
         <div class="nav-section-label">PUBLIC PORTAL</div>
-        <button class="nav-item" id="nav-submit" onclick="switchView('submit')">
+        <button class="nav-item active" id="nav-submit" onclick="switchView('submit')">
           <span class="nav-icon">✍️</span>
           <span class="nav-text">Submit Report</span>
         </button>
@@ -77,6 +48,35 @@
           <span class="nav-icon">⚡</span>
           <span class="nav-text">Swagger API</span>
         </a>
+
+        <div class="nav-section-label">MODERATOR WORKSPACE</div>
+        <button class="nav-item" id="nav-case-queue" onclick="handleQueueNavClick()">
+          <span class="nav-icon">📁</span>
+          <span class="nav-text">Case queue</span>
+          <span class="nav-pill" id="sidebar-total-badge">0</span>
+        </button>
+
+        <div class="nav-section-label">IN THIS VIEW</div>
+        <button class="nav-sub-item active" id="filter-view-all" onclick="filterBySidebarStatus('')">
+          <span class="sub-label">All submissions</span>
+          <span class="sub-count" id="sidebar-cnt-all">0</span>
+        </button>
+        <button class="nav-sub-item" id="filter-view-submitted" onclick="filterBySidebarStatus('SUBMITTED')">
+          <span class="sub-label">New submissions</span>
+          <span class="sub-count" id="sidebar-cnt-submitted">0</span>
+        </button>
+        <button class="nav-sub-item" id="filter-view-review" onclick="filterBySidebarStatus('UNDER_REVIEW')">
+          <span class="sub-label">Under review</span>
+          <span class="sub-count" id="sidebar-cnt-review">0</span>
+        </button>
+        <button class="nav-sub-item" id="filter-view-resolved" onclick="filterBySidebarStatus('RESOLVED')">
+          <span class="sub-label">Resolved</span>
+          <span class="sub-count" id="sidebar-cnt-resolved">0</span>
+        </button>
+        <button class="nav-sub-item" id="filter-view-dismissed" onclick="filterBySidebarStatus('DISMISSED')">
+          <span class="sub-label">Dismissed</span>
+          <span class="sub-count" id="sidebar-cnt-dismissed">0</span>
+        </button>
       </nav>
 
       <!-- Bottom Privacy Trust Banner -->
@@ -100,25 +100,21 @@
       <!-- Top Utility Header -->
       <header class="top-nav">
         <div class="breadcrumbs">
-          <span class="crumb-root">Moderator workspace</span>
+          <span class="crumb-root" id="top-breadcrumb-root">Public Portal</span>
           <span class="crumb-sep">›</span>
-          <span class="crumb-current" id="top-breadcrumb-page">Overview</span>
+          <span class="crumb-current" id="top-breadcrumb-page">Submit Report</span>
         </div>
 
         <div class="top-actions">
           <div class="ref-data-pill">
-            <span class="green-dot">●</span> REFERENCE DATA · LIVE
+            <span class="green-dot">●</span> SECURE NETWORK · ZERO LOGS
           </div>
           
-          <div class="confidentiality-card">
-            <div class="conf-icon">👁️‍🗨️</div>
-            <div class="conf-text">
-              <strong>Confidentiality first</strong>
-              <span>No reporter indicators in this view</span>
-            </div>
-          </div>
+          <button class="btn-mod-login-trigger" id="btn-open-login-modal" onclick="openLoginModal()" title="Moderator Access">
+            <span class="lock-icon">🔒</span> Moderator Sign In
+          </button>
 
-          <div class="user-badge" id="user-avatar-btn" onclick="toggleUserMenu()" title="Moderator Session">
+          <div class="user-badge hidden" id="user-avatar-btn" onclick="toggleUserMenu()" title="Moderator Session">
             <span class="avatar-letter">M</span>
           </div>
 
@@ -129,6 +125,7 @@
               <span>Role: Administrator</span>
             </div>
             <div class="user-dropdown-divider"></div>
+            <button class="dropdown-action" onclick="switchView('mod-overview')">Case Queue</button>
             <button class="dropdown-action" onclick="switchView('submit')">Public Submit View</button>
             <button class="dropdown-action" onclick="switchView('track')">Public Track View</button>
             <a href="/docs" target="_blank" class="dropdown-action">OpenAPI Explorer</a>
@@ -138,8 +135,8 @@
         </div>
       </header>
 
-      <!-- VIEW 1: MODERATOR DASHBOARD (INSPIRED BY SCREENSHOT) -->
-      <main id="view-mod-overview" class="view-pane active">
+      <!-- VIEW 1: MODERATOR DASHBOARD -->
+      <main id="view-mod-overview" class="view-pane">
         
         <!-- Moderator Hero Section -->
         <section class="mod-hero">
@@ -157,8 +154,8 @@
               <span class="hero-kpi-label">TOTAL REPORTS</span>
               <span class="hero-lock-icon">🔒</span>
             </div>
-            <div class="hero-kpi-num" id="stat-total">06</div>
-            <div class="hero-kpi-sub" id="stat-total-sub">6 illustrative cases in registry</div>
+            <div class="hero-kpi-num" id="stat-total">0</div>
+            <div class="hero-kpi-sub" id="stat-total-sub">0 cases in registry</div>
           </div>
 
           <!-- Card 2: New Submissions -->
@@ -167,8 +164,8 @@
               <span class="kpi-label">NEW SUBMISSIONS</span>
               <span class="kpi-dot dot-submitted">●</span>
             </div>
-            <div class="kpi-num" id="stat-submitted">2</div>
-            <div class="kpi-sub" id="stat-submitted-sub">2 of 6 reports</div>
+            <div class="kpi-num" id="stat-submitted">0</div>
+            <div class="kpi-sub" id="stat-submitted-sub">0 of 0 reports</div>
           </div>
 
           <!-- Card 3: Under Review -->
@@ -177,8 +174,8 @@
               <span class="kpi-label">UNDER REVIEW</span>
               <span class="kpi-dot dot-review">●</span>
             </div>
-            <div class="kpi-num" id="stat-review">3</div>
-            <div class="kpi-sub" id="stat-review-sub">3 of 6 reports</div>
+            <div class="kpi-num" id="stat-review">0</div>
+            <div class="kpi-sub" id="stat-review-sub">0 of 0 reports</div>
           </div>
 
           <!-- Card 4: Resolved -->
@@ -187,8 +184,8 @@
               <span class="kpi-label">RESOLVED</span>
               <span class="kpi-dot dot-resolved">●</span>
             </div>
-            <div class="kpi-num" id="stat-resolved">1</div>
-            <div class="kpi-sub" id="stat-resolved-sub">1 of 6 reports</div>
+            <div class="kpi-num" id="stat-resolved">0</div>
+            <div class="kpi-sub" id="stat-resolved-sub">0 of 0 reports</div>
           </div>
 
           <!-- Card 5: Dismissed -->
@@ -219,7 +216,7 @@
                   </div>
                 </div>
                 <div class="queue-status-indicator">
-                  <span class="count-tag" id="queue-count-tag">● 6 shown / 6 total cases</span>
+                  <span class="count-tag" id="queue-count-tag">● 0 shown / 0 total cases</span>
                 </div>
               </div>
 
@@ -276,7 +273,16 @@
                     </tr>
                   </thead>
                   <tbody id="queue-table-body">
-                    <!-- Populated dynamically via JS -->
+                    <tr>
+                      <td colspan="5">
+                        <div class="empty-queue-box">
+                          <div class="empty-icon">📂</div>
+                          <h4>No cases in registry yet</h4>
+                          <p>The queue is completely clean. Reports will appear here in real time as soon as they are submitted through the public portal.</p>
+                          <button type="button" class="btn-emerald btn-sm" onclick="switchView('submit')">✍️ Submit a Report</button>
+                        </div>
+                      </td>
+                    </tr>
                   </tbody>
                 </table>
               </div>
@@ -301,47 +307,47 @@
                 </div>
                 <span class="widget-tag">By severity</span>
               </div>
-              <div class="widget-sub" id="severity-distribution-sub">Current distribution · 6 cases</div>
+              <div class="widget-sub" id="severity-distribution-sub">Current distribution · 0 cases</div>
 
               <!-- Severity Progress Bars -->
               <div class="severity-bars-list">
                 <div class="sev-row">
                   <div class="sev-row-header">
                     <span class="sev-name sev-crit-label">CRITICAL</span>
-                    <span class="sev-count" id="sev-bar-cnt-crit">2 / 6</span>
+                    <span class="sev-count" id="sev-bar-cnt-crit">0 / 0</span>
                   </div>
                   <div class="sev-bar-track">
-                    <div class="sev-bar-fill fill-crit" id="sev-bar-fill-crit" style="width: 33.3%;"></div>
+                    <div class="sev-bar-fill fill-crit" id="sev-bar-fill-crit" style="width: 0%;"></div>
                   </div>
                 </div>
 
                 <div class="sev-row">
                   <div class="sev-row-header">
                     <span class="sev-name sev-high-label">HIGH</span>
-                    <span class="sev-count" id="sev-bar-cnt-high">2 / 6</span>
+                    <span class="sev-count" id="sev-bar-cnt-high">0 / 0</span>
                   </div>
                   <div class="sev-bar-track">
-                    <div class="sev-bar-fill fill-high" id="sev-bar-fill-high" style="width: 33.3%;"></div>
+                    <div class="sev-bar-fill fill-high" id="sev-bar-fill-high" style="width: 0%;"></div>
                   </div>
                 </div>
 
                 <div class="sev-row">
                   <div class="sev-row-header">
                     <span class="sev-name sev-med-label">MEDIUM</span>
-                    <span class="sev-count" id="sev-bar-cnt-med">1 / 6</span>
+                    <span class="sev-count" id="sev-bar-cnt-med">0 / 0</span>
                   </div>
                   <div class="sev-bar-track">
-                    <div class="sev-bar-fill fill-med" id="sev-bar-fill-med" style="width: 16.7%;"></div>
+                    <div class="sev-bar-fill fill-med" id="sev-bar-fill-med" style="width: 0%;"></div>
                   </div>
                 </div>
 
                 <div class="sev-row">
                   <div class="sev-row-header">
                     <span class="sev-name sev-low-label">LOW</span>
-                    <span class="sev-count" id="sev-bar-cnt-low">1 / 6</span>
+                    <span class="sev-count" id="sev-bar-cnt-low">0 / 0</span>
                   </div>
                   <div class="sev-bar-track">
-                    <div class="sev-bar-fill fill-low" id="sev-bar-fill-low" style="width: 16.7%;"></div>
+                    <div class="sev-bar-fill fill-low" id="sev-bar-fill-low" style="width: 0%;"></div>
                   </div>
                 </div>
               </div>
@@ -379,22 +385,22 @@
               <div class="ai-metrics-grid">
                 <div class="ai-metric-cell">
                   <span class="metric-key">AUTO-CLASSIFIED</span>
-                  <strong class="metric-val" id="metric-auto-classified">5</strong>
+                  <strong class="metric-val" id="metric-auto-classified">0</strong>
                   <span class="metric-tag">Backend confidence</span>
                 </div>
                 <div class="ai-metric-cell">
                   <span class="metric-key">FLAGGED FOR REVIEW</span>
-                  <strong class="metric-val" id="metric-flagged-review">1</strong>
+                  <strong class="metric-val" id="metric-flagged-review">0</strong>
                   <span class="metric-tag">Review needed</span>
                 </div>
                 <div class="ai-metric-cell">
                   <span class="metric-key">PRIVACY REDACTIONS</span>
-                  <strong class="metric-val" id="metric-redactions-total">4</strong>
+                  <strong class="metric-val" id="metric-redactions-total">0</strong>
                   <span class="metric-tag">PII scrubbed</span>
                 </div>
                 <div class="ai-metric-cell">
                   <span class="metric-key">HIGH CONFIDENCE</span>
-                  <strong class="metric-val" id="metric-high-conf">83%</strong>
+                  <strong class="metric-val" id="metric-high-conf">--</strong>
                   <span class="metric-tag">Model certainty</span>
                 </div>
               </div>
@@ -413,11 +419,11 @@
                 </div>
               </div>
               <div class="cat-pills-row" id="cat-coverage-pills">
-                <span class="cat-pill">Security <strong id="cat-cnt-sec">2</strong></span>
-                <span class="cat-pill">Harassment <strong id="cat-cnt-har">1</strong></span>
-                <span class="cat-pill">Corruption <strong id="cat-cnt-cor">1</strong></span>
-                <span class="cat-pill">Technical <strong id="cat-cnt-tec">1</strong></span>
-                <span class="cat-pill">Other <strong id="cat-cnt-oth">1</strong></span>
+                <span class="cat-pill">Security <strong id="cat-cnt-sec">0</strong></span>
+                <span class="cat-pill">Harassment <strong id="cat-cnt-har">0</strong></span>
+                <span class="cat-pill">Corruption <strong id="cat-cnt-cor">0</strong></span>
+                <span class="cat-pill">Technical <strong id="cat-cnt-tec">0</strong></span>
+                <span class="cat-pill">Other <strong id="cat-cnt-oth">0</strong></span>
               </div>
             </div>
 
@@ -426,7 +432,7 @@
       </main>
 
       <!-- VIEW 2: PUBLIC SUBMIT PORTAL (ANONYMOUS) -->
-      <section id="view-submit" class="view-pane">
+      <section id="view-submit" class="view-pane active">
         <div class="portal-wrapper">
           <div class="portal-header">
             <span class="portal-badge">🛡️ 100% UNTRACEABLE TRANSMISSION</span>
@@ -706,6 +712,47 @@
         </div>
 
       </div>
+    </div>
+  </div>
+
+  <!-- MODAL: Moderator Sign In -->
+  <div id="modal-login" class="modal-backdrop hidden">
+    <div class="modal-box white-card">
+      <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 1rem;">
+        <div>
+          <div class="modal-top-icon">🔒</div>
+          <h3 class="modal-headline">Moderator Sign In</h3>
+          <p class="modal-subtext" style="margin-bottom: 0;">Sign in to access the confidential case operations queue and triage reports.</p>
+        </div>
+        <button type="button" class="btn-close-modal" onclick="closeLoginModal()">✕</button>
+      </div>
+
+      <div id="login-error-alert" class="hidden" style="background: #fde8e4; border: 1px solid #f8b4a8; color: #b9472e; padding: 0.65rem 0.85rem; border-radius: 8px; font-size: 0.82rem; margin-bottom: 1rem;">
+        Invalid username or password.
+      </div>
+
+      <form id="mod-login-form" onsubmit="handleAdminLogin(event)">
+        <div class="form-row-group">
+          <label for="input-mod-username">Username</label>
+          <input type="text" id="input-mod-username" class="editorial-input" placeholder="e.g. moderator" required autocomplete="username">
+        </div>
+
+        <div class="form-row-group">
+          <label for="input-mod-password">Password</label>
+          <input type="password" id="input-mod-password" class="editorial-input" placeholder="••••••••••••" required autocomplete="current-password">
+        </div>
+
+        <div style="background: #faf8f5; border: 1px solid var(--border-light); padding: 0.65rem 0.85rem; border-radius: 6px; font-size: 0.75rem; color: var(--ink-600); margin-bottom: 1.25rem;">
+          💡 <strong>Authorized Demo Credentials:</strong> Username: <code style="font-family: var(--font-mono); color: var(--pine-800);">moderator</code> · Password: <code style="font-family: var(--font-mono); color: var(--pine-800);">WhistleDrop@2026</code>
+        </div>
+
+        <div class="modal-footer-actions">
+          <button type="button" class="btn-subtle" onclick="closeLoginModal()">Cancel</button>
+          <button type="submit" class="btn-emerald" id="btn-login-submit">
+            <span>Unlock Workspace</span>
+          </button>
+        </div>
+      </form>
     </div>
   </div>
 

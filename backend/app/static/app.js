@@ -4,66 +4,117 @@ let piiTimeout = null;
 let searchTimeout = null;
 let currentSidebarStatusFilter = "";
 
-// Auto-initialize moderator session on startup if token missing
-async function ensureModeratorSession() {
-  if (!currentToken) {
-    try {
-      const res = await fetch("/api/auth/login", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ username: "moderator", password: "WhistleDrop@2026" })
-      });
-      if (res.ok) {
-        const data = await res.json();
-        currentToken = data.access_token;
-        localStorage.setItem("whistledrop_mod_token", currentToken);
-      }
-    } catch (e) {
-      console.warn("Auto-login fallback skipped:", e);
+// Update top nav and sidebar UI based on auth state
+function updateAuthUI() {
+  const loginBtn = document.getElementById("btn-open-login-modal");
+  const userBadge = document.getElementById("user-avatar-btn");
+  if (currentToken) {
+    if (loginBtn) loginBtn.classList.add("hidden");
+    if (userBadge) userBadge.classList.remove("hidden");
+  } else {
+    if (loginBtn) loginBtn.classList.remove("hidden");
+    if (userBadge) userBadge.classList.add("hidden");
+  }
+}
+
+// Modal controls for Moderator Login
+function openLoginModal() {
+  const modal = document.getElementById("modal-login");
+  const errBox = document.getElementById("login-error-alert");
+  if (errBox) errBox.classList.add("hidden");
+  if (modal) modal.classList.remove("hidden");
+  const usernameInput = document.getElementById("input-mod-username");
+  if (usernameInput) usernameInput.focus();
+}
+
+function closeLoginModal() {
+  const modal = document.getElementById("modal-login");
+  if (modal) modal.classList.add("hidden");
+}
+
+async function handleAdminLogin(e) {
+  e.preventDefault();
+  const usernameInput = document.getElementById("input-mod-username");
+  const passwordInput = document.getElementById("input-mod-password");
+  const submitBtn = document.getElementById("btn-login-submit");
+  const errBox = document.getElementById("login-error-alert");
+
+  const username = usernameInput.value.trim();
+  const password = passwordInput.value;
+
+  if (errBox) errBox.classList.add("hidden");
+  submitBtn.disabled = true;
+  submitBtn.innerHTML = "<span>Verifying...</span>";
+
+  try {
+    const res = await fetch("/api/auth/login", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ username, password })
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.detail || "Invalid credentials");
+
+    currentToken = data.access_token;
+    localStorage.setItem("whistledrop_mod_token", currentToken);
+    updateAuthUI();
+    closeLoginModal();
+    showToast("Signed in as moderator", "success");
+    switchView("mod-overview");
+  } catch (err) {
+    if (errBox) {
+      errBox.textContent = err.message;
+      errBox.classList.remove("hidden");
+    } else {
+      showToast(err.message, "error");
     }
+  } finally {
+    submitBtn.disabled = false;
+    submitBtn.innerHTML = "<span>Unlock Workspace</span>";
   }
 }
 
-// --- View Switching ---
-function switchView(viewId) {
-  document.querySelectorAll(".view-pane").forEach(el => el.classList.remove("active"));
-  document.querySelectorAll(".nav-item").forEach(el => {
-    if (!el.classList.contains("nav-ext")) el.classList.remove("active");
-  });
+function handleAdminLogout() {
+  currentToken = null;
+  localStorage.removeItem("whistledrop_mod_token");
+  updateAuthUI();
+  showToast("Signed out of moderator workspace", "info");
+  switchView("submit");
+}
 
-  const targetPane = document.getElementById(`view-${viewId}`);
-  if (targetPane) targetPane.classList.add("active");
-
-  const breadcrumb = document.getElementById("top-breadcrumb-page");
-  if (viewId === "mod-overview") {
-    document.getElementById("nav-case-queue").classList.add("active");
-    breadcrumb.textContent = "Overview";
-    loadAdminDashboardStats();
-    loadAdminReports();
-  } else if (viewId === "submit") {
-    document.getElementById("nav-submit").classList.add("active");
-    breadcrumb.textContent = "Public Submission";
-  } else if (viewId === "track") {
-    document.getElementById("nav-track").classList.add("active");
-    breadcrumb.textContent = "Public Tracking";
+function handleQueueNavClick() {
+  if (!currentToken) {
+    openLoginModal();
+  } else {
+    switchView("mod-overview");
   }
 }
 
+// --- Sidebar Status and Severity Filters ---
 function filterBySidebarStatus(status) {
+  if (!currentToken) {
+    openLoginModal();
+    return;
+  }
   currentSidebarStatusFilter = status;
   
   // Update sidebar sub-item active state
   document.querySelectorAll(".nav-sub-item").forEach(el => el.classList.remove("active"));
   if (!status) {
-    document.getElementById("filter-view-all").classList.add("active");
+    const el = document.getElementById("filter-view-all");
+    if (el) el.classList.add("active");
   } else if (status === "SUBMITTED") {
-    document.getElementById("filter-view-submitted").classList.add("active");
+    const el = document.getElementById("filter-view-submitted");
+    if (el) el.classList.add("active");
   } else if (status === "UNDER_REVIEW") {
-    document.getElementById("filter-view-review").classList.add("active");
+    const el = document.getElementById("filter-view-review");
+    if (el) el.classList.add("active");
   } else if (status === "RESOLVED") {
-    document.getElementById("filter-view-resolved").classList.add("active");
+    const el = document.getElementById("filter-view-resolved");
+    if (el) el.classList.add("active");
   } else if (status === "DISMISSED") {
-    document.getElementById("filter-view-dismissed").classList.add("active");
+    const el = document.getElementById("filter-view-dismissed");
+    if (el) el.classList.add("active");
   }
 
   // Sync with table dropdown if on overview
@@ -77,6 +128,10 @@ function filterBySidebarStatus(status) {
 }
 
 function filterBySidebarSeverity(severity) {
+  if (!currentToken) {
+    openLoginModal();
+    return;
+  }
   const tableSevSelect = document.getElementById("table-filter-severity");
   if (tableSevSelect) {
     tableSevSelect.value = severity;
@@ -85,10 +140,10 @@ function filterBySidebarSeverity(severity) {
   loadAdminReports();
 }
 
-// --- User Menu ---
+// --- User Menu Dropdown ---
 function toggleUserMenu() {
   const menu = document.getElementById("user-menu-dropdown");
-  menu.classList.toggle("hidden");
+  if (menu) menu.classList.toggle("hidden");
 }
 
 document.addEventListener("click", (e) => {
@@ -99,11 +154,39 @@ document.addEventListener("click", (e) => {
   }
 });
 
-function handleAdminLogout() {
-  currentToken = null;
-  localStorage.removeItem("whistledrop_mod_token");
-  showToast("Moderator session reset", "info");
-  ensureModeratorSession();
+// --- View Switching ---
+function switchView(viewId) {
+  if (viewId === "mod-overview" && !currentToken) {
+    openLoginModal();
+    return;
+  }
+
+  document.querySelectorAll(".view-pane").forEach(el => el.classList.remove("active"));
+  document.querySelectorAll(".nav-item").forEach(el => {
+    if (!el.classList.contains("nav-ext")) el.classList.remove("active");
+  });
+
+  const targetPane = document.getElementById(`view-${viewId}`);
+  if (targetPane) targetPane.classList.add("active");
+
+  const breadcrumbRoot = document.getElementById("top-breadcrumb-root");
+  const breadcrumb = document.getElementById("top-breadcrumb-page");
+
+  if (viewId === "mod-overview") {
+    document.getElementById("nav-case-queue").classList.add("active");
+    if (breadcrumbRoot) breadcrumbRoot.textContent = "Moderator workspace";
+    if (breadcrumb) breadcrumb.textContent = "Case Operations";
+    loadAdminDashboardStats();
+    loadAdminReports();
+  } else if (viewId === "submit") {
+    document.getElementById("nav-submit").classList.add("active");
+    if (breadcrumbRoot) breadcrumbRoot.textContent = "Public Portal";
+    if (breadcrumb) breadcrumb.textContent = "Submit Report";
+  } else if (viewId === "track") {
+    document.getElementById("nav-track").classList.add("active");
+    if (breadcrumbRoot) breadcrumbRoot.textContent = "Public Portal";
+    if (breadcrumb) breadcrumb.textContent = "Track Case";
+  }
 }
 
 // --- Toast Notifications ---
@@ -311,23 +394,28 @@ function updateTrackStepper(status) {
 
 // --- Moderator Command Center (Dashboard Telemetry & Table) ---
 async function loadAdminDashboardStats() {
-  await ensureModeratorSession();
+  if (!currentToken) return;
   try {
     const res = await fetch("/api/admin/dashboard/stats", {
       headers: { "Authorization": `Bearer ${currentToken}` }
     });
-    if (!res.ok) return;
+    if (!res.ok) {
+      if (res.status === 401) {
+        handleAdminLogout();
+      }
+      return;
+    }
     const stats = await res.json();
 
     const total = stats.total_reports || 0;
-    const sub = stats.by_status.SUBMITTED || 0;
-    const rev = stats.by_status.UNDER_REVIEW || 0;
-    const resCount = stats.by_status.RESOLVED || 0;
-    const dis = stats.by_status.DISMISSED || 0;
+    const sub = (stats.by_status && stats.by_status.SUBMITTED) || 0;
+    const rev = (stats.by_status && stats.by_status.UNDER_REVIEW) || 0;
+    const resCount = (stats.by_status && stats.by_status.RESOLVED) || 0;
+    const dis = (stats.by_status && stats.by_status.DISMISSED) || 0;
 
     // KPI row
-    document.getElementById("stat-total").textContent = String(total).padStart(2, "0");
-    document.getElementById("stat-total-sub").textContent = `${total} illustrative cases in registry`;
+    document.getElementById("stat-total").textContent = total;
+    document.getElementById("stat-total-sub").textContent = `${total} case(s) in registry`;
 
     document.getElementById("stat-submitted").textContent = sub;
     document.getElementById("stat-submitted-sub").textContent = `${sub} of ${total} reports`;
@@ -350,10 +438,10 @@ async function loadAdminDashboardStats() {
     document.getElementById("sidebar-cnt-dismissed").textContent = dis;
 
     // Severity Mix Widget
-    const crit = stats.by_severity.CRITICAL || 0;
-    const high = stats.by_severity.HIGH || 0;
-    const med = stats.by_severity.MEDIUM || 0;
-    const low = stats.by_severity.LOW || 0;
+    const crit = (stats.by_severity && stats.by_severity.CRITICAL) || 0;
+    const high = (stats.by_severity && stats.by_severity.HIGH) || 0;
+    const med = (stats.by_severity && stats.by_severity.MEDIUM) || 0;
+    const low = (stats.by_severity && stats.by_severity.LOW) || 0;
 
     document.getElementById("severity-distribution-sub").textContent = `Current distribution · ${total} cases`;
     document.getElementById("sev-bar-cnt-crit").textContent = `${crit} / ${total}`;
@@ -368,17 +456,21 @@ async function loadAdminDashboardStats() {
     document.getElementById("sev-bar-fill-low").style.width = pct(low);
 
     // AI & Privacy Signals Widget
-    document.getElementById("metric-auto-classified").textContent = stats.ai_metrics.auto_classified || 0;
-    document.getElementById("metric-flagged-review").textContent = stats.ai_metrics.flagged_for_review || 0;
-    document.getElementById("metric-redactions-total").textContent = stats.ai_metrics.privacy_redacted_cases || 0;
-    document.getElementById("metric-high-conf").textContent = `${Math.round((stats.ai_metrics.high_confidence_ratio || 0.8) * 100)}%`;
+    const aiM = stats.ai_metrics || {};
+    document.getElementById("metric-auto-classified").textContent = aiM.auto_classified || 0;
+    document.getElementById("metric-flagged-review").textContent = aiM.flagged_for_review || 0;
+    document.getElementById("metric-redactions-total").textContent = aiM.privacy_redacted_cases || 0;
+    document.getElementById("metric-high-conf").textContent = total > 0 
+      ? `${Math.round((aiM.high_confidence_ratio || 0.8) * 100)}%` 
+      : "--";
 
     // Category Coverage Widget
-    document.getElementById("cat-cnt-sec").textContent = stats.by_category.Security || 0;
-    document.getElementById("cat-cnt-har").textContent = stats.by_category.Harassment || 0;
-    document.getElementById("cat-cnt-cor").textContent = stats.by_category.Corruption || 0;
-    document.getElementById("cat-cnt-tec").textContent = stats.by_category.Technical || 0;
-    document.getElementById("cat-cnt-oth").textContent = stats.by_category.Other || 0;
+    const byCat = stats.by_category || {};
+    document.getElementById("cat-cnt-sec").textContent = byCat.Security || 0;
+    document.getElementById("cat-cnt-har").textContent = byCat.Harassment || 0;
+    document.getElementById("cat-cnt-cor").textContent = byCat.Corruption || 0;
+    document.getElementById("cat-cnt-tec").textContent = byCat.Technical || 0;
+    document.getElementById("cat-cnt-oth").textContent = byCat.Other || 0;
 
   } catch (err) {
     console.error("Dashboard metrics load error:", err);
@@ -391,7 +483,7 @@ function debounceAdminSearch() {
 }
 
 async function loadAdminReports() {
-  await ensureModeratorSession();
+  if (!currentToken) return;
   const statusFilter = document.getElementById("table-filter-status").value || currentSidebarStatusFilter;
   const catFilter = document.getElementById("table-filter-category").value;
   const sevFilter = document.getElementById("table-filter-severity").value;
@@ -408,7 +500,12 @@ async function loadAdminReports() {
     const res = await fetch(`/api/admin/reports?${params.toString()}`, {
       headers: { "Authorization": `Bearer ${currentToken}` }
     });
-    if (!res.ok) return;
+    if (!res.ok) {
+      if (res.status === 401) {
+        handleAdminLogout();
+      }
+      return;
+    }
     const data = await res.json();
     const tbody = document.getElementById("queue-table-body");
     tbody.innerHTML = "";
@@ -416,7 +513,18 @@ async function loadAdminReports() {
     document.getElementById("queue-count-tag").textContent = `● ${data.reports.length} shown / ${data.total} total cases`;
 
     if (!data.reports || data.reports.length === 0) {
-      tbody.innerHTML = `<tr><td colspan="5" style="text-align: center; color: var(--ink-400); padding: 2.5rem;">No cases match current filter criteria.</td></tr>`;
+      tbody.innerHTML = `
+        <tr>
+          <td colspan="5">
+            <div class="empty-queue-box">
+              <div class="empty-icon">📂</div>
+              <h4>No cases in registry yet</h4>
+              <p>The queue is completely clean. Reports will appear here in real time as soon as they are submitted through the public portal.</p>
+              <button type="button" class="btn-emerald btn-sm" onclick="switchView('submit')">✍️ Submit a Report</button>
+            </div>
+          </td>
+        </tr>
+      `;
       return;
     }
 
@@ -449,7 +557,10 @@ async function loadAdminReports() {
 
 // --- Case Dossier Inspector Drawer ---
 async function openCaseDossier(reportId) {
-  await ensureModeratorSession();
+  if (!currentToken) {
+    openLoginModal();
+    return;
+  }
   try {
     const res = await fetch(`/api/admin/reports/${reportId}`, {
       headers: { "Authorization": `Bearer ${currentToken}` }
@@ -545,9 +656,46 @@ async function openCaseDossier(reportId) {
       });
     }
 
-    // Form inputs default
-    document.getElementById("dossier-status-select").value = r.status === "SUBMITTED" ? "UNDER_REVIEW" : r.status;
-    document.getElementById("dossier-audit-note").value = "";
+    // Form inputs default - dynamically configure allowed transitions based on state machine
+    const statusSelect = document.getElementById("dossier-status-select");
+    const auditNoteInput = document.getElementById("dossier-audit-note");
+    const submitBtn = document.querySelector("#dossier-status-form button[type='submit']");
+
+    if (r.status === "SUBMITTED") {
+      statusSelect.innerHTML = `
+        <option value="UNDER_REVIEW" selected>UNDER_REVIEW (Begin Investigation)</option>
+      `;
+      statusSelect.disabled = false;
+      auditNoteInput.disabled = false;
+      if (submitBtn) {
+        submitBtn.disabled = false;
+        submitBtn.innerHTML = "<span>Record Status Transition</span>";
+      }
+    } else if (r.status === "UNDER_REVIEW") {
+      statusSelect.innerHTML = `
+        <option value="RESOLVED" selected>RESOLVED (Action Completed / Closed)</option>
+        <option value="DISMISSED">DISMISSED (Insufficient Evidence / False Report)</option>
+      `;
+      statusSelect.disabled = false;
+      auditNoteInput.disabled = false;
+      if (submitBtn) {
+        submitBtn.disabled = false;
+        submitBtn.innerHTML = "<span>Record Status Transition</span>";
+      }
+    } else {
+      // Terminal states: RESOLVED or DISMISSED
+      statusSelect.innerHTML = `
+        <option value="${r.status}">${r.status} (Case Closed / Terminal)</option>
+      `;
+      statusSelect.disabled = true;
+      auditNoteInput.disabled = true;
+      if (submitBtn) {
+        submitBtn.disabled = true;
+        submitBtn.innerHTML = "<span>Case Closed (Terminal State)</span>";
+      }
+    }
+
+    auditNoteInput.value = "";
 
     document.getElementById("modal-inspector").classList.remove("hidden");
   } catch (err) {
@@ -600,10 +748,34 @@ function escapeHtml(text) {
   return String(text).replace(/[&<>"']/g, m => map[m]);
 }
 
+// Explicit Global Window Bindings for Inline HTML Handlers
+window.toggleUserMenu = toggleUserMenu;
+window.openLoginModal = openLoginModal;
+window.closeLoginModal = closeLoginModal;
+window.handleAdminLogin = handleAdminLogin;
+window.handleAdminLogout = handleAdminLogout;
+window.handleQueueNavClick = handleQueueNavClick;
+window.filterBySidebarStatus = filterBySidebarStatus;
+window.filterBySidebarSeverity = filterBySidebarSeverity;
+window.switchView = switchView;
+window.openCaseDossier = openCaseDossier;
+window.closeInspectorModal = closeInspectorModal;
+window.handleStatusUpdateSubmit = handleStatusUpdateSubmit;
+window.handleReportSubmit = handleReportSubmit;
+window.copySuccessCaseCode = copySuccessCaseCode;
+window.closeSuccessModal = closeSuccessModal;
+window.proceedToTrackFromModal = proceedToTrackFromModal;
+window.handleTrackSubmit = handleTrackSubmit;
+window.debounceAdminSearch = debounceAdminSearch;
+window.loadAdminReports = loadAdminReports;
+window.loadAdminDashboardStats = loadAdminDashboardStats;
+window.debouncePIICheck = debouncePIICheck;
+
 // Bootstrap on page load
 document.addEventListener("DOMContentLoaded", () => {
-  ensureModeratorSession().then(() => {
+  updateAuthUI();
+  switchView("submit");
+  if (currentToken) {
     loadAdminDashboardStats();
-    loadAdminReports();
-  });
+  }
 });

@@ -1834,6 +1834,57 @@ body {
   display: none !important;
 }
 
+/* Moderator Sign In Trigger in Top Nav */
+.btn-mod-login-trigger {
+  background: var(--pine-700);
+  color: #ffffff;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  padding: 0.45rem 0.95rem;
+  border-radius: var(--radius-inner);
+  font-family: var(--font-sans);
+  font-size: 0.78rem;
+  font-weight: 600;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  transition: var(--transition);
+  box-shadow: 0 2px 8px rgba(19, 57, 48, 0.15);
+}
+.btn-mod-login-trigger:hover {
+  background: var(--pine-600);
+  transform: translateY(-1px);
+}
+.btn-mod-login-trigger .lock-icon {
+  font-size: 0.85rem;
+}
+
+/* Empty Queue Table State */
+.empty-queue-box {
+  padding: 3rem 1.5rem;
+  text-align: center;
+}
+.empty-queue-box .empty-icon {
+  font-size: 2.2rem;
+  margin-bottom: 0.5rem;
+}
+.empty-queue-box h4 {
+  font-family: var(--font-serif);
+  font-size: 1.15rem;
+  color: var(--ink-900);
+  margin-bottom: 0.35rem;
+}
+.empty-queue-box p {
+  color: var(--ink-600);
+  font-size: 0.85rem;
+  max-width: 420px;
+  margin: 0 auto 1.25rem;
+}
+.btn-sm {
+  padding: 0.45rem 1rem !important;
+  font-size: 0.8rem !important;
+}
+
 /* Responsive adjustments */
 @media (max-width: 1024px) {
   .dashboard-grid { grid-template-columns: 1fr; }
