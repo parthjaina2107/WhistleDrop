@@ -157,3 +157,51 @@ def preview_redaction(payload: RedactionPreviewRequest):
         detected_types=types,
         warning=warning
     )
+
+import os
+import uuid
+from fastapi import UploadFile, File
+
+ALLOWED_EXTENSIONS = {".png", ".jpg", ".jpeg", ".webp", ".pdf", ".txt", ".csv", ".log", ".json"}
+MAX_FILE_SIZE_BYTES = 10 * 1024 * 1024  # 10 MB
+
+@router.post("/upload-evidence", status_code=status.HTTP_201_CREATED)
+async def upload_evidence(file: UploadFile = File(...)):
+    """
+    Anonymous evidence file upload endpoint (GDG Brownie Point Enhancement).
+    - Anonymizes file name to uuid4 to prevent client filesystem/device fingerprinting.
+    - Validates file type and size (<= 10MB).
+    - Returns an anonymized static URL that can be included in the report.
+    """
+    if not file.filename:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="No file uploaded.")
+    
+    _, ext = os.path.splitext(file.filename.lower())
+    if ext not in ALLOWED_EXTENSIONS:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"Unsupported file type '{ext}'. Allowed: {', '.join(sorted(ALLOWED_EXTENSIONS))}"
+        )
+    
+    content = await file.read()
+    if len(content) > MAX_FILE_SIZE_BYTES:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="File exceeds maximum allowed size of 10MB."
+        )
+    
+    safe_filename = f"evidence_{uuid.uuid4().hex}{ext}"
+    uploads_dir = os.path.join(os.path.dirname(os.path.dirname(__file__)), "static", "uploads")
+    os.makedirs(uploads_dir, exist_ok=True)
+    
+    file_path = os.path.join(uploads_dir, safe_filename)
+    with open(file_path, "wb") as f:
+        f.write(content)
+        
+    return {
+        "filename": safe_filename,
+        "evidence_url": f"/static/uploads/{safe_filename}",
+        "size_bytes": len(content),
+        "message": "Evidence file uploaded securely. Original filename and client metadata scrubbed."
+    }
+

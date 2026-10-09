@@ -3,7 +3,7 @@ from typing import List, Optional, Dict, Any, Literal
 from pydantic import BaseModel, Field, ConfigDict, field_validator
 
 CategoryType = Literal["Security", "Harassment", "Corruption", "Technical", "Other"]
-StatusType = Literal["SUBMITTED", "UNDER_REVIEW", "RESOLVED", "DISMISSED"]
+StatusType = Literal["SUBMITTED", "UNDER_REVIEW", "RESOLVED", "DISMISSED", "CLOSED"]
 SeverityType = Literal["LOW", "MEDIUM", "HIGH", "CRITICAL"]
 
 # --- Public Reporter Schemas ---
@@ -16,8 +16,8 @@ class ReportCreate(BaseModel):
     @field_validator("evidence_url")
     @classmethod
     def validate_url(cls, v: Optional[str]) -> Optional[str]:
-        if v and not (v.startswith("http://") or v.startswith("https://")):
-            raise ValueError("Evidence URL must start with http:// or https://")
+        if v and not (v.startswith("http://") or v.startswith("https://") or v.startswith("/static/uploads/")):
+            raise ValueError("Evidence URL must start with http://, https://, or /static/uploads/")
         return v
 
 class AIAnalysisSummary(BaseModel):

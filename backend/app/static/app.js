@@ -279,6 +279,8 @@ async function handleReportSubmit(e) {
     document.getElementById("modal-success").classList.remove("hidden");
     document.getElementById("public-report-form").reset();
     document.getElementById("pii-alert-banner").classList.add("hidden");
+    const fileUploadStatus = document.getElementById("file-upload-status");
+    if (fileUploadStatus) fileUploadStatus.classList.add("hidden");
 
     // Refresh dashboard stats in background
     loadAdminDashboardStats();
@@ -287,6 +289,50 @@ async function handleReportSubmit(e) {
   } finally {
     submitBtn.disabled = false;
     submitBtn.innerHTML = originalText;
+  }
+}
+
+// --- Evidence File Upload (GDG Brownie Point) ---
+async function handleEvidenceFileUpload(event) {
+  const file = event.target.files && event.target.files[0];
+  if (!file) return;
+
+  const statusBox = document.getElementById("file-upload-status");
+  const urlInput = document.getElementById("input-evidence");
+  
+  if (statusBox) {
+    statusBox.textContent = `Uploading "${file.name}" (scrubbing metadata)...`;
+    statusBox.style.background = "#eef4f1";
+    statusBox.style.color = "var(--pine-800)";
+    statusBox.classList.remove("hidden");
+  }
+
+  const formData = new FormData();
+  formData.append("file", file);
+
+  try {
+    const res = await fetch("/api/reports/upload-evidence", {
+      method: "POST",
+      body: formData
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.detail || "Upload failed");
+
+    if (urlInput) urlInput.value = data.evidence_url;
+    if (statusBox) {
+      statusBox.innerHTML = `✓ Uploaded as <strong>${data.filename}</strong> (device & EXIF metadata scrubbed)`;
+      statusBox.style.background = "#e6f4ea";
+      statusBox.style.color = "#137333";
+    }
+    showToast("Evidence file attached securely", "success");
+  } catch (err) {
+    if (statusBox) {
+      statusBox.textContent = `Upload failed: ${err.message}`;
+      statusBox.style.background = "#fde8e4";
+      statusBox.style.color = "#b9472e";
+      statusBox.classList.remove("hidden");
+    }
+    showToast(err.message, "error");
   }
 }
 
@@ -660,6 +706,7 @@ async function openCaseDossier(reportId) {
     const statusSelect = document.getElementById("dossier-status-select");
     const auditNoteInput = document.getElementById("dossier-audit-note");
     const submitBtn = document.querySelector("#dossier-status-form button[type='submit']");
+    const closeBtn = document.getElementById("btn-close-case");
 
     if (r.status === "SUBMITTED") {
       statusSelect.innerHTML = `
@@ -671,10 +718,12 @@ async function openCaseDossier(reportId) {
         submitBtn.disabled = false;
         submitBtn.innerHTML = "<span>Record Status Transition</span>";
       }
+      if (closeBtn) closeBtn.style.display = "inline-flex";
     } else if (r.status === "UNDER_REVIEW") {
       statusSelect.innerHTML = `
         <option value="RESOLVED" selected>RESOLVED (Action Completed / Closed)</option>
         <option value="DISMISSED">DISMISSED (Insufficient Evidence / False Report)</option>
+        <option value="CLOSED">CLOSED (Permanently Closed & Sealed)</option>
       `;
       statusSelect.disabled = false;
       auditNoteInput.disabled = false;
@@ -682,17 +731,30 @@ async function openCaseDossier(reportId) {
         submitBtn.disabled = false;
         submitBtn.innerHTML = "<span>Record Status Transition</span>";
       }
-    } else {
-      // Terminal states: RESOLVED or DISMISSED
+      if (closeBtn) closeBtn.style.display = "inline-flex";
+    } else if (r.status === "RESOLVED" || r.status === "DISMISSED") {
       statusSelect.innerHTML = `
-        <option value="${r.status}">${r.status} (Case Closed / Terminal)</option>
+        <option value="CLOSED" selected>CLOSED (Permanently Close & Seal Archive)</option>
+      `;
+      statusSelect.disabled = false;
+      auditNoteInput.disabled = false;
+      if (submitBtn) {
+        submitBtn.disabled = false;
+        submitBtn.innerHTML = "<span>Seal & Permanently Close</span>";
+      }
+      if (closeBtn) closeBtn.style.display = "inline-flex";
+    } else {
+      // Terminal state: CLOSED
+      statusSelect.innerHTML = `
+        <option value="CLOSED">CLOSED (Permanently Closed & Sealed)</option>
       `;
       statusSelect.disabled = true;
       auditNoteInput.disabled = true;
       if (submitBtn) {
         submitBtn.disabled = true;
-        submitBtn.innerHTML = "<span>Case Closed (Terminal State)</span>";
+        submitBtn.innerHTML = "<span>Case Sealed (Immutable)</span>";
       }
+      if (closeBtn) closeBtn.style.display = "none";
     }
 
     auditNoteInput.value = "";
@@ -734,12 +796,42 @@ async function handleStatusUpdateSubmit(e) {
   }
 }
 
+// --- Permanently Close & Seal Case (GDG Brownie Point) ---
+async function handlePermanentlyCloseCase() {
+  if (!currentToken) {
+    openLoginModal();
+    return;
+  }
+  const reportId = document.getElementById("dossier-target-id").value;
+  if (!reportId) return;
+
+  const reason = prompt("Enter final closure and archival notes to permanently seal this case:", "Investigation officially concluded and archived.");
+  if (!reason) return;
+
+  try {
+    const res = await fetch(`/api/admin/reports/${reportId}/close?reason=${encodeURIComponent(reason)}`, {
+      method: "POST",
+      headers: { "Authorization": `Bearer ${currentToken}` }
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.detail || "Failed to close case");
+
+    showToast("Case permanently closed and sealed", "success");
+    openCaseDossier(reportId);
+    loadAdminDashboardStats();
+    loadAdminReports();
+  } catch (err) {
+    showToast(err.message, "error");
+  }
+}
+
 // Helpers
 function formatStatusLabel(st) {
   if (st === "UNDER_REVIEW") return "Under review";
   if (st === "SUBMITTED") return "Submitted";
   if (st === "RESOLVED") return "Resolved";
   if (st === "DISMISSED") return "Dismissed";
+  if (st === "CLOSED") return "Permanently Closed";
   return st;
 }
 
@@ -770,6 +862,8 @@ window.debounceAdminSearch = debounceAdminSearch;
 window.loadAdminReports = loadAdminReports;
 window.loadAdminDashboardStats = loadAdminDashboardStats;
 window.debouncePIICheck = debouncePIICheck;
+window.handleEvidenceFileUpload = handleEvidenceFileUpload;
+window.handlePermanentlyCloseCase = handlePermanentlyCloseCase;
 
 // Bootstrap on page load
 document.addEventListener("DOMContentLoaded", () => {

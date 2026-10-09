@@ -219,3 +219,104 @@ def test_dashboard_stats():
     assert "by_severity" in stats
     assert "by_category" in stats
     assert "ai_metrics" in stats
+
+# --- 7. Evidence File Upload Tests (GDG Brownie Point) ---
+
+def test_evidence_file_upload():
+    file_content = b"Incident evidence screenshot data dummy buffer"
+    res = client.post(
+        "/api/reports/upload-evidence",
+        files={"file": ("incident_leak.png", file_content, "image/png")}
+    )
+    assert res.status_code == 201
+    data = res.json()
+    assert "evidence_url" in data
+    assert data["evidence_url"].startswith("/static/uploads/evidence_")
+    assert data["filename"].endswith(".png")
+
+def test_evidence_file_upload_invalid_type():
+    file_content = b"malicious binary or executable script"
+    res = client.post(
+        "/api/reports/upload-evidence",
+        files={"file": ("exploit.exe", file_content, "application/x-msdownload")}
+    )
+    assert res.status_code == 400
+    assert "Unsupported file type" in res.json()["detail"]
+
+# --- 8. Permanent Case Closure & Purge Tests (GDG Brownie Point) ---
+
+def test_permanently_close_case():
+    login_res = client.post(
+        "/api/auth/login",
+        json={"username": settings.DEFAULT_ADMIN_USERNAME, "password": settings.DEFAULT_ADMIN_PASSWORD}
+    )
+    token = login_res.json()["access_token"]
+    headers = {"Authorization": f"Bearer {token}"}
+
+    # Submit a report
+    sub_res = client.post(
+        "/api/reports",
+        json={
+            "category": "Security",
+            "description": "Critical security breach on bastion server needing permanent closure test.",
+        }
+    )
+    case_code = sub_res.json()["case_code"]
+
+    # Locate report ID
+    admin_list = client.get(f"/api/admin/reports?search={case_code}", headers=headers).json()
+    report_id = admin_list["reports"][0]["id"]
+
+    # Advance to UNDER_REVIEW
+    client.patch(
+        f"/api/admin/reports/{report_id}/status",
+        headers=headers,
+        json={"status": "UNDER_REVIEW", "message": "Investigating"}
+    )
+
+    # Permanently close case
+    close_res = client.post(
+        f"/api/admin/reports/{report_id}/close?reason=Investigation+completed+and+sealed",
+        headers=headers
+    )
+    assert close_res.status_code == 200
+    assert close_res.json()["new_status"] == "CLOSED"
+
+    # Attempting to change status of CLOSED case must return 422
+    attempt_res = client.patch(
+        f"/api/admin/reports/{report_id}/status",
+        headers=headers,
+        json={"status": "UNDER_REVIEW", "message": "Attempting reopen"}
+    )
+    assert attempt_res.status_code == 422
+
+def test_purge_case():
+    login_res = client.post(
+        "/api/auth/login",
+        json={"username": settings.DEFAULT_ADMIN_USERNAME, "password": settings.DEFAULT_ADMIN_PASSWORD}
+    )
+    token = login_res.json()["access_token"]
+    headers = {"Authorization": f"Bearer {token}"}
+
+    # Submit a report
+    sub_res = client.post(
+        "/api/reports",
+        json={
+            "category": "Other",
+            "description": "Ephemeral test report destined for legal purge deletion test.",
+        }
+    )
+    case_code = sub_res.json()["case_code"]
+
+    admin_list = client.get(f"/api/admin/reports?search={case_code}", headers=headers).json()
+    report_id = admin_list["reports"][0]["id"]
+
+    # Purge the report
+    del_res = client.delete(f"/api/admin/reports/{report_id}", headers=headers)
+    assert del_res.status_code == 200
+    assert del_res.json()["purged"] is True
+
+    # Confirm it cannot be tracked
+    track_res = client.get(f"/api/reports/{case_code}")
+    assert track_res.status_code == 404
+

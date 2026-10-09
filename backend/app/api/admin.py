@@ -18,9 +18,10 @@ router = APIRouter(prefix="/admin", tags=["Moderator Administration"])
 # Valid state transitions lookup table
 VALID_STATUS_TRANSITIONS = {
     "SUBMITTED": ["UNDER_REVIEW"],
-    "UNDER_REVIEW": ["RESOLVED", "DISMISSED"],
-    "RESOLVED": [],   # Terminal state
-    "DISMISSED": [],  # Terminal state
+    "UNDER_REVIEW": ["RESOLVED", "DISMISSED", "CLOSED"],
+    "RESOLVED": ["CLOSED"],
+    "DISMISSED": ["CLOSED"],
+    "CLOSED": [],   # Terminal state
 }
 
 @router.get("/reports", response_model=PaginatedReportsResponse)
@@ -203,8 +204,10 @@ def update_report_status(
 
     allowed_next_states = VALID_STATUS_TRANSITIONS.get(current_status, [])
     if target_status not in allowed_next_states:
-        if current_status in ["RESOLVED", "DISMISSED"]:
+        if current_status == "CLOSED":
             detail_msg = f"Report is in terminal status '{current_status}' and cannot be altered."
+        elif current_status in ["RESOLVED", "DISMISSED"] and target_status != "CLOSED":
+            detail_msg = f"Report is in terminal status '{current_status}' and can only be transitioned to 'CLOSED'."
         else:
             detail_msg = (
                 f"Invalid status transition from '{current_status}' to '{target_status}'. "
@@ -265,6 +268,66 @@ def add_status_update(
         "note": message
     }
 
+@router.post("/reports/{report_id}/close")
+def permanently_close_case(
+    report_id: str,
+    reason: str = Query("Case investigation officially closed and archived.", min_length=3, max_length=1000),
+    current_mod: Moderator = Depends(get_current_moderator),
+    db: Session = Depends(get_db)
+):
+    """
+    Permanently closes and archives a case (GDG Brownie Point Enhancement).
+    Transitions case to terminal CLOSED status and attaches an archive seal audit record.
+    """
+    report = db.query(Report).filter(Report.id == report_id).first()
+    if not report:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Report not found")
+        
+    if report.status == "CLOSED":
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Case is already permanently closed.")
+        
+    previous_status = report.status
+    report.status = "CLOSED"
+    
+    audit_entry = StatusUpdate(
+        report_id=report.id,
+        previous_status=previous_status,
+        new_status="CLOSED",
+        message=f"[PERMANENTLY CLOSED & SEALED] {reason}"
+    )
+    db.add(audit_entry)
+    db.commit()
+    
+    return {
+        "message": "Case permanently closed and sealed.",
+        "case_code": report.case_code,
+        "previous_status": previous_status,
+        "new_status": "CLOSED"
+    }
+
+@router.delete("/reports/{report_id}", status_code=status.HTTP_200_OK)
+def purge_report(
+    report_id: str,
+    current_mod: Moderator = Depends(get_current_moderator),
+    db: Session = Depends(get_db)
+):
+    """
+    Permanently purges/deletes a case and its audit updates from the database for compliance or legal data erasure.
+    """
+    report = db.query(Report).filter(Report.id == report_id).first()
+    if not report:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Report not found")
+        
+    case_code = report.case_code
+    db.delete(report)
+    db.commit()
+    
+    return {
+        "message": f"Case {case_code} permanently purged from database.",
+        "purged": True
+    }
+
+
 @router.get("/dashboard/stats", response_model=DashboardStatsResponse)
 def get_dashboard_stats(
     current_mod: Moderator = Depends(get_current_moderator),
@@ -276,7 +339,7 @@ def get_dashboard_stats(
     all_reports = db.query(Report).all()
     total = len(all_reports)
 
-    by_status = {"SUBMITTED": 0, "UNDER_REVIEW": 0, "RESOLVED": 0, "DISMISSED": 0}
+    by_status = {"SUBMITTED": 0, "UNDER_REVIEW": 0, "RESOLVED": 0, "DISMISSED": 0, "CLOSED": 0}
     by_severity = {"LOW": 0, "MEDIUM": 0, "HIGH": 0, "CRITICAL": 0}
     by_category = {"Security": 0, "Harassment": 0, "Corruption": 0, "Technical": 0, "Other": 0}
 

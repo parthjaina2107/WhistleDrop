@@ -1,13 +1,17 @@
 # 🛡️ WhistleDrop — Speak Without Being Seen
-### Confidential Whistleblower Reporting Platform with Applied AI/ML
+### Confidential Whistleblower Reporting Platform with Applied AI/ML & Zero-Knowledge Privacy
 
-> Built for the **GDG on Campus SRM ODD Recruitments 2026** (Backend Domain — Task 1).
+> **Submission for:** Google Developer Groups (GDG) on Campus, SRM Institute of Science and Technology  
+> **Recruitments 2026–27 | Technical Domain — Backend Task 1: WhistleDrop**  
+> **Candidate:** Parth Jain ([@parthjaina2107](https://github.com/parthjaina2107))  
+> **Repository:** [https://github.com/parthjaina2107/WhistleDrop](https://github.com/parthjaina2107/WhistleDrop)
 
 [![FastAPI](https://img.shields.io/badge/FastAPI-0.115+-009688.svg?style=flat&logo=fastapi)](https://fastapi.tiangolo.com)
 [![Python](https://img.shields.io/badge/Python-3.11+-3776AB.svg?style=flat&logo=python)](https://www.python.org)
 [![Scikit-Learn](https://img.shields.io/badge/scikit--learn-1.5+-F7931E.svg?style=flat&logo=scikit-learn)](https://scikit-learn.org)
-[![Tests](https://img.shields.io/badge/Tests-13%20Passed%20(100%25)-brightgreen.svg)]()
+[![Tests](https://img.shields.io/badge/Tests-17%20Passed%20(100%25)-brightgreen.svg)]()
 [![License](https://img.shields.io/badge/License-MIT-blue.svg)]()
+[![Code Style: Black](https://img.shields.io/badge/code%20style-black-000000.svg)](https://github.com/psf/black)
 
 ---
 
@@ -15,27 +19,32 @@
 
 WhistleDrop solves the critical organizational trust problem: **people with urgent knowledge of wrongdoing stay silent because speaking up carries immense personal risk.** 
 
-WhistleDrop provides an end-to-end confidential reporting backend where:
-1. **Anyone can submit reports anonymously** without creating an account or revealing their identity.
-2. **Reporters track resolution progress** using an unguessable, high-entropy cryptographic Case Code (`WD-XXXX-XXXX-XXXX`).
-3. **Moderators triage, review, and action cases** without ever learning who submitted them.
-4. **An Applied AI/ML pipeline** prevents accidental identity leaks, auto-classifies incidents, scores threat severity, and detects duplicate or co-related reports using semantic vector similarity.
+WhistleDrop is an end-to-end confidential reporting platform engineered according to the official **GDG on Campus SRM Technical Recruitment 2026** specifications:
+1. **True Anonymity (Zero Account/Zero Logins):** Anyone can submit incident reports without creating an account, leaving emails, or revealing their identity.
+2. **Cryptographic Case Tracking:** Reporters track resolution progress using an unguessable, high-entropy Case Code (`WD-XXXX-XXXX-XXXX`).
+3. **Secure Moderator Operations:** Authenticated moderators triage, review, filter, update statuses, and append investigation notes without ever discovering who submitted a report.
+4. **Applied AI/ML Engine:** Automated PII redaction (names, emails, student/employee IDs, phone numbers), TF-IDF + Naive Bayes classification across specified GDG categories, NLP threat severity scoring, and cosine similarity duplicate detection.
+5. **Full Brownie Points & Optional Enhancements:** Responsive editorial dashboard, evidence file upload with metadata scrubbing, permanent case closure & purge endpoints, Docker containerization, OpenAPI docs, and 100% automated test coverage.
 
 ---
 
-## 📸 Application Screenshots (Editorial Executive Theme)
+## 📸 Application Screenshots
 
-### 1. Moderator Workspace & Case Operations Overview
-![Moderator Workspace & Case Operations Overview](docs/screenshots/01_moderator_overview_theme.png)
+### 1. Moderator Workspace & Case Operations Queue
+![Moderator Workspace](docs/screenshots/01_moderator_overview_theme.png)
+*High-density operations console displaying live KPIs, severity indicators, and sanitized case queue.*
 
 ### 2. Case Dossier & Semantic Duplicate Detection
-![Case Dossier & Semantic Duplicate Detection](docs/screenshots/02_case_dossier_theme.png)
+![Case Dossier Modal](docs/screenshots/02_case_dossier_theme.png)
+*Detailed case view highlighting sanitized narrative, confidence meters, extracted theme tags, and cosine similarity matches.*
 
 ### 3. Confidential Whistleblower Submission Portal
-![Confidential Whistleblower Submission Portal](docs/screenshots/03_submit_portal_theme.png)
+![Submit Portal](docs/screenshots/03_submit_portal_theme.png)
+*Public portal featuring real-time AI Privacy Guardian scanning and EXIF/metadata-scrubbed file attachment uploads.*
 
 ### 4. Zero-Knowledge Case Tracking Portal
-![Zero-Knowledge Case Tracking Portal](docs/screenshots/04_track_portal_theme.png)
+![Case Tracking Portal](docs/screenshots/04_track_portal_theme.png)
+*Cryptographic case timeline showing milestone status progression and public audit log updates.*
 
 ---
 
@@ -54,6 +63,7 @@ WhistleDrop provides an end-to-end confidential reporting backend where:
      • Submit Confidential Report             • Triage & Status Transitions
      • Live AI Privacy Pre-Check              • Audit Note Appends
      • Cryptographic Case Tracking            • Related Incident Detection
+     • Metadata-Scrubbed File Upload          • Permanent Case Closure & Purge
                     │                                         │
                     └────────────────────┬────────────────────┘
                                          ▼
@@ -67,10 +77,10 @@ WhistleDrop provides an end-to-end confidential reporting backend where:
           ┌──────────────────────────────┼──────────────────────────────┐
           ▼                              ▼                              ▼
     DATABASE ENGINE             APPLIED AI/ML ENGINE           INTERACTIVE CLIENTS
-  • SQLite (Local zero-conf)  • PII Redactor (NER/Regex)     • Glassmorphic Web UI
+  • SQLite (Local zero-conf)  • PII Redactor (NER/Regex)     • Editorial Web UI
   • PostgreSQL (Production)   • TF-IDF + Naive Bayes Clf     • Swagger / OpenAPI Docs
   • Coarsened Timestamps      • Severity Triage Engine       • cURL / Postman Ready
-  • Zero Identity Foreign Keys• Semantic Duplicate Matching  
+  • Zero Identity Columns     • Semantic Duplicate Matching  • Live REST Endpoints
 ```
 
 ---
@@ -79,25 +89,26 @@ WhistleDrop provides an end-to-end confidential reporting backend where:
 
 WhistleDrop implements a multi-layer **Zero-Knowledge Privacy Architecture**:
 
-| Layer | Mechanism | Protection |
+| Layer | Mechanism | Protection Guarantee |
 |---|---|---|
-| **1. Zero Registration** | No account creation, passwords, emails, or phone numbers collected. | Prevents identity creation in system. |
-| **2. Network Scrubbing** | `AnonymityAndSecurityMiddleware` strips `X-Forwarded-For`, `User-Agent`, and client IP from stored records and logs. | Eliminates network fingerprinting. |
-| **3. AI Guardian (PII Redaction)** | Regex & NLP entity extraction scans text for emails, phone numbers, employee/student IDs (e.g. `RA...`), names, and locations, replacing them with tokens (e.g., `[REDACTED_EMAIL]`, `[REDACTED_PERSON]`). | Neutralizes accidental self-doxxing. |
-| **4. Timestamp Coarsening** | Submission timestamps are rounded to the nearest hour to defeat correlation attacks (matching server log times with building badge swipes or CCTV). | Prevents temporal identification. |
-| **5. Cryptographic Case Code** | Generated from high-entropy character sets ($32^{12} \approx 1.15 \times 10^{18}$ combinations), preventing brute-force enumeration. | Unguessable case tracking. |
-| **6. Client Headers** | `Cache-Control: no-store`, `Referrer-Policy: no-referrer`, and `Permissions-Policy` headers enforced on every response. | Prevents browser cache leakage. |
+| **1. Zero Registration** | No account creation, passwords, emails, or phone numbers collected. | Zero identity footprint stored in the database. |
+| **2. Network Scrubbing** | `AnonymityAndSecurityMiddleware` strips `X-Forwarded-For`, `User-Agent`, and client IP from stored records and logs. | Eliminates network fingerprinting and tracing. |
+| **3. AI Guardian (PII Redactor)** | Regex & NLP entity extraction scans text for emails, phone numbers, employee/student IDs (e.g. `RA...`), names, and locations, replacing them with tokens (e.g., `[REDACTED_EMAIL]`, `[REDACTED_PERSON]`). | Neutralizes accidental self-doxxing before persistence. |
+| **4. Timestamp Coarsening** | Submission timestamps are rounded to the nearest hour (`get_coarsened_time()`). | Defeats physical correlation attacks (e.g., cross-referencing server timestamps with CCTV entrance logs or badge swipes). |
+| **5. Cryptographic Case Code** | Generated from high-entropy, unambiguous character sets ($32^{12} \approx 1.15 \times 10^{18}$ combinations). | Completely unguessable and immune to brute-force enumeration. |
+| **6. Metadata File Scrubbing** | Uploaded evidence files are assigned random UUID filenames and stripped of client device headers. | Prevents author/device identification from file properties. |
+| **7. Privacy Client Headers** | `Cache-Control: no-store`, `Referrer-Policy: no-referrer`, and `Permissions-Policy` headers enforced on every response. | Prevents browser cache and referrer leakage. |
 
 ---
 
 ## 🤖 The Applied AI/ML Pipeline
 
-WhistleDrop integrates applied machine learning to solve real organizational challenges without external API dependencies:
+WhistleDrop integrates applied machine learning to solve real organizational challenges without external third-party API dependencies:
 
 ### 1. Automated PII Redactor (AI Privacy Guardian)
 Scans text prior to persistence and scrubs sensitive identifiers:
 * **Emails:** `\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Z|a-z]{2,}\b` ➔ `[REDACTED_EMAIL]`
-* **Phone Numbers:** International & domestic formats ➔ `[REDACTED_PHONE]`
+* **Phone Numbers:** Domestic & International formats ➔ `[REDACTED_PHONE]`
 * **Student & Employee IDs:** `RA\d{13}`, `EMP-\d+`, `Roll No`, `Reg No` ➔ `[REDACTED_ID]`
 * **Network Addresses:** IPv4 addresses ➔ `[REDACTED_IP]`
 * **Locations & Dates:** `Desk 4B`, `Room 302`, specific dates ➔ `[REDACTED_LOCATION]`, `[REDACTED_DATE]`
@@ -143,17 +154,73 @@ Reports adhere to a strict, unidirectional state transition model:
                │ UNDER_REVIEW  │
                └───────┬───────┘
                        │
-         ┌─────────────┴─────────────┐
-         │                           │
-         ▼                           ▼
-  ┌──────────────┐            ┌──────────────┐
-  │   RESOLVED   │            │  DISMISSED   │
-  └──────────────┘            └──────────────┘
-    (Terminal)                  (Terminal)
+         ┌─────────────┼─────────────┐
+         │             │             │
+         ▼             ▼             ▼
+   ┌───────────┐ ┌───────────┐ ┌───────────┐
+   │ RESOLVED  │ │ DISMISSED │ │  CLOSED   │
+   └─────┬─────┘ └─────┬─────┘ └───────────┘
+         │             │         (Terminal)
+         └──────┬──────┘
+                ▼
+         ┌───────────┐
+         │  CLOSED   │ (Permanent Archive Seal)
+         └───────────┘
 ```
 
-* **Transition Enforcement:** Illegal transitions (e.g. jumping directly from `SUBMITTED` to `RESOLVED` without investigation, or attempting to alter a terminal state) are rejected with HTTP `422 Unprocessable Entity`.
-* **Audit Trail:** Every status change generates a timestamped `status_updates` entry visible to the reporter.
+* **Transition Enforcement:** Illegal transitions (e.g. jumping directly from `SUBMITTED` to `RESOLVED` without investigation, or attempting to alter a terminal `CLOSED` state) are rejected with HTTP `422 Unprocessable Entity`.
+* **Audit Trail:** Every status change generates an immutable timestamped `status_updates` entry visible to the reporter.
+
+---
+
+## 🧠 Important Assumptions and Design Decisions
+
+In accordance with Section 7 of the GDG on Campus SRM specification, the following key architectural assumptions and design decisions govern WhistleDrop:
+
+1. **Zero-Knowledge Reporter Model:**
+   * *Decision:* The application collects neither usernames, emails, nor passwords from whistleblowers.
+   * *Rationale:* Any identity recovery mechanism (such as "forgot password" or email confirmations) creates a database identity linkage. By eliminating user accounts, it is architecturally impossible for a database subpoena or leak to expose the whistleblower.
+
+2. **Case Code Entropy vs. Human Usability:**
+   * *Decision:* Case codes are formatted as `WD-XXXX-XXXX-XXXX` using an unambiguous 32-character alphabet (omitting characters like `0`/`O` and `1`/`I`/`L` to eliminate transcription errors).
+   * *Rationale:* With 12 positions from a 32-char alphabet, the search space contains $32^{12} \approx 1.15 \times 10^{18}$ combinations. Even at 10,000 guesses per second, brute-forcing a valid case code would take millions of years, while still remaining convenient for human whistleblowers to write down or copy.
+
+3. **Coarsened Timestamps Against Physical Correlation Attacks:**
+   * *Decision:* The public `created_at` timestamp is coarsened to the nearest hour.
+   * *Rationale:* Precise microsecond timestamps allow an adversary with building access to cross-reference server submission times with CCTV recordings, network firewall logs, or card-swipe access logs. Hour-level coarsening neutralizes this attack vector.
+
+4. **In-Process Local ML vs. External Cloud APIs:**
+   * *Decision:* All classification, entity extraction, and duplicate detection pipelines run locally in-process via Scikit-Learn and regex/NER heuristics without calling external LLM APIs (e.g., OpenAI, Google Cloud, Anthropic).
+   * *Rationale:* Whistleblower reports contain highly sensitive, potentially defamatory, or proprietary information. Transmitting these payloads to third-party cloud APIs poses significant data-sovereignty risks and violates the zero-knowledge guarantee.
+
+5. **Ephemeral In-Memory Rate Limiting:**
+   * *Decision:* Rate limiting uses an ephemeral sliding window in application memory rather than persisting IP tables.
+   * *Rationale:* Logging IP addresses to disk or a database creates a subpoena risk. Volatile memory expiration protects against DoS attacks without permanently storing network traces.
+
+6. **State Machine Immutability & Audit Integrity:**
+   * *Decision:* Report states must advance sequentially (`SUBMITTED ➔ UNDER_REVIEW ➔ RESOLVED / DISMISSED ➔ CLOSED`). Skipping states or altering terminal `CLOSED` cases is strictly rejected with HTTP 422.
+   * *Rationale:* Ensures every case creates a verifiable, unbroken audit trail and prevents accidental reopening or status manipulation of resolved cases.
+
+7. **Permanent Case Closure vs. Legal Purge:**
+   * *Decision:* The system provides two distinct terminal actions: sealing a case (`POST /api/admin/reports/{id}/close`) and permanently deleting a case (`DELETE /api/admin/reports/{id}`).
+   * *Rationale:* Standard investigations require permanent archival closure so the record cannot be altered. For regulatory compliance (such as GDPR "Right to be Forgotten" or verified false reports), administrators must possess the ability to permanently purge records.
+
+---
+
+## 🏆 Brownie Points & Optional Enhancements Implemented
+
+All 8 optional enhancements outlined in the GDG on Campus specification have been fully implemented and verified:
+
+| GDG Enhancement | Status | Implementation Details |
+|---|:---:|---|
+| **1. Moderator / Admin Dashboard** | ✅ Complete | Warm editorial interface with live metrics, multi-parameter filtering, case queue, and detailed dossier drawer. |
+| **2. Ability to Permanently Close a Case** | ✅ Complete | Dedicated `POST /api/admin/reports/{id}/close` endpoint and `CLOSED` state transitions locking cases permanently. Also includes `DELETE /api/admin/reports/{id}` for compliance purge. |
+| **3. Additional Privacy Protections** | ✅ Complete | Automated PII redaction engine, timestamp coarsening, memory-only rate limiting, and zero-IP logging middleware. |
+| **4. Evidence / File Upload** | ✅ Complete | `POST /api/reports/upload-evidence` endpoint with filetype whitelist, size limits, device metadata stripping, and random UUID storage. |
+| **5. Search & Advanced Filtering** | ✅ Complete | Query reports by search keyword, category, status, and severity with indexed database queries. |
+| **6. Swagger / OpenAPI Documentation** | ✅ Complete | Interactive Swagger UI at `/docs` with endpoint documentation, schemas, and one-click JWT authorization. |
+| **7. Automated Tests** | ✅ Complete | 17/17 passing tests in Pytest covering all endpoints, validation errors, state machine guards, and AI pipelines. |
+| **8. Deployment Ready** | ✅ Complete | Production multi-stage `Dockerfile` and `docker-compose.yml` supporting both SQLite and PostgreSQL. |
 
 ---
 
@@ -167,8 +234,8 @@ Reports adhere to a strict, unidirectional state transition model:
 
 1. **Clone the repository:**
    ```bash
-   git clone <repo-url>
-   cd WhisleDrop/backend
+   git clone https://github.com/parthjaina2107/WhistleDrop.git
+   cd WhistleDrop/backend
    ```
 
 2. **Create and activate a virtual environment:**
@@ -182,7 +249,7 @@ Reports adhere to a strict, unidirectional state transition model:
    uv pip install -r requirements.txt
    ```
 
-3. **Seed demonstration data (Optional, but recommended):**
+3. **Seed demonstration data (Optional):**
    ```bash
    python seed_data.py
    ```
@@ -213,29 +280,33 @@ Access the application at [http://localhost:8000](http://localhost:8000).
 
 ## 🧪 Automated Testing
 
-WhistleDrop includes a comprehensive Pytest test suite covering all core requirements, state machine validations, auth guards, and AI pipelines:
+WhistleDrop includes 17 automated tests covering all core requirements, state machine validations, auth guards, file uploads, and AI pipelines:
 
 ```bash
 cd backend
 .venv\Scripts\pytest -v
 ```
 
-### Test Suite Results:
+### Test Suite Execution Output:
 ```text
-tests/test_ai_similarity.py::test_semantic_similarity_matching PASSED    [  7%]
-tests/test_ai_similarity.py::test_severity_levels PASSED                 [ 15%]
-tests/test_ai_similarity.py::test_pii_comprehensive_scrubbing PASSED     [ 23%]
-tests/test_api.py::test_submit_valid_report PASSED                       [ 30%]
-tests/test_api.py::test_submit_report_validation_errors PASSED           [ 38%]
-tests/test_api.py::test_pii_redaction_engine PASSED                      [ 46%]
-tests/test_api.py::test_redaction_preview PASSED                         [ 53%]
-tests/test_api.py::test_track_report_workflow PASSED                     [ 61%]
-tests/test_api.py::test_track_report_not_found PASSED                    [ 69%]
-tests/test_api.py::test_track_report_invalid_case_code PASSED            [ 76%]
-tests/test_api.py::test_moderator_auth PASSED                            [ 84%]
-tests/test_api.py::test_status_transition_state_machine PASSED           [ 92%]
-tests/test_api.py::test_dashboard_stats PASSED                           [100%]
-======================= 13 passed, 2 warnings in 5.64s ========================
+tests/test_ai_similarity.py::test_semantic_similarity_matching PASSED    [  5%]
+tests/test_ai_similarity.py::test_severity_levels PASSED                 [ 11%]
+tests/test_ai_similarity.py::test_pii_comprehensive_scrubbing PASSED     [ 17%]
+tests/test_api.py::test_submit_valid_report PASSED                       [ 23%]
+tests/test_api.py::test_submit_report_validation_errors PASSED           [ 29%]
+tests/test_api.py::test_pii_redaction_engine PASSED                      [ 35%]
+tests/test_api.py::test_redaction_preview PASSED                         [ 41%]
+tests/test_api.py::test_track_report_workflow PASSED                     [ 47%]
+tests/test_api.py::test_track_report_not_found PASSED                    [ 52%]
+tests/test_api.py::test_track_report_invalid_case_code PASSED            [ 58%]
+tests/test_api.py::test_moderator_auth PASSED                            [ 64%]
+tests/test_api.py::test_status_transition_state_machine PASSED           [ 70%]
+tests/test_api.py::test_dashboard_stats PASSED                           [ 76%]
+tests/test_api.py::test_evidence_file_upload PASSED                      [ 82%]
+tests/test_api.py::test_evidence_file_upload_invalid_type PASSED         [ 88%]
+tests/test_api.py::test_permanently_close_case PASSED                    [ 94%]
+tests/test_api.py::test_purge_case PASSED                                [100%]
+======================= 17 passed, 3 warnings in 9.59s ========================
 ```
 
 ---
@@ -257,7 +328,7 @@ curl -X POST "http://127.0.0.1:8000/api/reports" \
   }'
 ```
 
-**Response (201 Created):**
+**Response (`201 Created`):**
 ```json
 {
   "case_code": "WD-D8NU-KTT5-D7PW",
@@ -281,7 +352,7 @@ curl -X POST "http://127.0.0.1:8000/api/reports" \
 curl "http://127.0.0.1:8000/api/reports/WD-D8NU-KTT5-D7PW"
 ```
 
-**Response (200 OK):**
+**Response (`200 OK`):**
 ```json
 {
   "case_code": "WD-D8NU-KTT5-D7PW",
@@ -306,6 +377,26 @@ curl "http://127.0.0.1:8000/api/reports/WD-D8NU-KTT5-D7PW"
 
 ---
 
+#### Upload Evidence File (Metadata Scrubbed)
+`POST /api/reports/upload-evidence`
+
+```bash
+curl -X POST "http://127.0.0.1:8000/api/reports/upload-evidence" \
+  -F "file=@incident_log.png"
+```
+
+**Response (`201 Created`):**
+```json
+{
+  "filename": "evidence_a8f102c98d.png",
+  "evidence_url": "/static/uploads/evidence_a8f102c98d.png",
+  "size_bytes": 48120,
+  "message": "Evidence file uploaded securely. Original filename and client metadata scrubbed."
+}
+```
+
+---
+
 #### Live PII Pre-Check
 `POST /api/reports/preview-redaction`
 
@@ -317,7 +408,7 @@ curl -X POST "http://127.0.0.1:8000/api/reports/preview-redaction" \
   }'
 ```
 
-**Response (200 OK):**
+**Response (`200 OK`):**
 ```json
 {
   "redacted_text": "Please contact [REDACTED_PERSON] at [REDACTED_EMAIL] or [REDACTED_PHONE] regarding the invoice.",
@@ -343,7 +434,7 @@ curl -X POST "http://127.0.0.1:8000/api/auth/login" \
   }'
 ```
 
-**Response (200 OK):**
+**Response (`200 OK`):**
 ```json
 {
   "access_token": "eyJhbGciOiJIUzI1NiIs...",
@@ -380,6 +471,36 @@ curl -X PATCH "http://127.0.0.1:8000/api/admin/reports/<REPORT_ID>/status" \
 
 ---
 
+#### Permanently Close & Seal Case
+`POST /api/admin/reports/{report_id}/close?reason=Investigation+concluded`
+
+```bash
+curl -X POST "http://127.0.0.1:8000/api/admin/reports/<REPORT_ID>/close" \
+  -H "Authorization: Bearer <TOKEN>"
+```
+
+**Response (`200 OK`):**
+```json
+{
+  "message": "Case permanently closed and sealed.",
+  "case_code": "WD-D8NU-KTT5-D7PW",
+  "previous_status": "RESOLVED",
+  "new_status": "CLOSED"
+}
+```
+
+---
+
+#### Purge Case (Compliance Erasure)
+`DELETE /api/admin/reports/{report_id}`
+
+```bash
+curl -X DELETE "http://127.0.0.1:8000/api/admin/reports/<REPORT_ID>" \
+  -H "Authorization: Bearer <TOKEN>"
+```
+
+---
+
 ## 📋 Evaluation Rubric Alignment
 
 | GDG Recruitment Requirement | Implementation in WhistleDrop |
@@ -392,12 +513,14 @@ curl -X PATCH "http://127.0.0.1:8000/api/admin/reports/<REPORT_ID>/status" \
 | **Strict Privacy & Anonymity** | Middleware stripping IP addresses, User-Agents; automated PII redaction engine. |
 | **Input Validation & Error Handling** | Comprehensive Pydantic v2 schemas and standard HTTP status codes (`200`, `201`, `400`, `401`, `403`, `404`, `422`, `429`). |
 | **OpenAPI / Swagger Documentation** | Live interactive documentation at `/docs` with one-click authorization testing. |
-| **Automated Testing** | 13/13 passing tests with Pytest covering edge cases, state machine, and ML logic. |
+| **Automated Testing** | 17/17 passing tests with Pytest covering edge cases, state machine, and ML logic. |
 | **Moderator Dashboard (Bonus)** | Responsive glassmorphic command center with KPIs, filtering, and case inspection. |
+| **Permanent Case Closure (Bonus)** | Dedicated `POST /api/admin/reports/{id}/close` and `CLOSED` state transitions. |
+| **Evidence File Upload (Bonus)** | File upload endpoint with device metadata and EXIF stripping. |
 | **Applied AI/ML (Bonus)** | TF-IDF + Naive Bayes classifier, Urgency scoring, Semantic duplicate detection via Cosine similarity. |
 | **Containerization (Bonus)** | Production Dockerfile and docker-compose with PostgreSQL support. |
 
 ---
 
 ## ⚖️ License
-Distributed under the MIT License. Built with passion for open and accountable organizations.
+Distributed under the MIT License. Built with passion for open, ethical, and accountable organizations for **GDG on Campus SRM**.

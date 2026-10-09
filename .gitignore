@@ -23,3 +23,8 @@ htmlcov/
 Thumbs.db
 .vscode/
 .idea/
+
+# Uploaded evidence files (retain .gitkeep)
+backend/app/static/uploads/*
+!backend/app/static/uploads/.gitkeep
+
