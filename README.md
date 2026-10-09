@@ -23,22 +23,19 @@ WhistleDrop provides an end-to-end confidential reporting backend where:
 
 ---
 
-## 📸 Application Screenshots
+## 📸 Application Screenshots (Editorial Executive Theme)
 
-### 1. Anonymous Whistleblower Submission Portal
-![Confidential Whistleblower Submission](docs/screenshots/01_home_page_hero.png)
+### 1. Moderator Workspace & Case Operations Overview
+![Moderator Workspace & Case Operations Overview](docs/screenshots/01_moderator_overview_theme.png)
 
-### 2. Live AI Privacy Guardian (Real-Time PII Pre-Check)
-![AI Privacy Guardian Warning](docs/screenshots/02_pii_warning_banner.png)
+### 2. Case Dossier & Semantic Duplicate Detection
+![Case Dossier & Semantic Duplicate Detection](docs/screenshots/02_case_dossier_theme.png)
 
-### 3. Submission Confirmation & Cryptographic Case Code Generation
-![Case Code Confirmation Modal](docs/screenshots/03_submission_success_modal.png)
+### 3. Confidential Whistleblower Submission Portal
+![Confidential Whistleblower Submission Portal](docs/screenshots/03_submit_portal_theme.png)
 
 ### 4. Zero-Knowledge Case Tracking Portal
-![Case Tracking & Stepper Timeline](docs/screenshots/04_case_tracking_page.png)
-
-### 5. Moderator Command Center & Case Dossier Inspector
-![Moderator Case Dossier & Duplicate Detection](docs/screenshots/05_case_dossier_modal.png)
+![Zero-Knowledge Case Tracking Portal](docs/screenshots/04_track_portal_theme.png)
 
 ---
 

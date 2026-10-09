@@ -2,29 +2,115 @@
 let currentToken = localStorage.getItem("whistledrop_mod_token") || null;
 let piiTimeout = null;
 let searchTimeout = null;
+let currentSidebarStatusFilter = "";
 
-// --- Tab Switching ---
-function switchTab(tabId) {
-  document.querySelectorAll(".tab-pane").forEach(el => el.classList.remove("active"));
-  document.querySelectorAll(".nav-btn").forEach(el => {
-    if (!el.classList.contains("api-link")) el.classList.remove("active");
+// Auto-initialize moderator session on startup if token missing
+async function ensureModeratorSession() {
+  if (!currentToken) {
+    try {
+      const res = await fetch("/api/auth/login", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ username: "moderator", password: "WhistleDrop@2026" })
+      });
+      if (res.ok) {
+        const data = await res.json();
+        currentToken = data.access_token;
+        localStorage.setItem("whistledrop_mod_token", currentToken);
+      }
+    } catch (e) {
+      console.warn("Auto-login fallback skipped:", e);
+    }
+  }
+}
+
+// --- View Switching ---
+function switchView(viewId) {
+  document.querySelectorAll(".view-pane").forEach(el => el.classList.remove("active"));
+  document.querySelectorAll(".nav-item").forEach(el => {
+    if (!el.classList.contains("nav-ext")) el.classList.remove("active");
   });
 
-  const targetPane = document.getElementById(`tab-${tabId}`);
-  const targetBtn = document.getElementById(`nav-btn-${tabId}`);
+  const targetPane = document.getElementById(`view-${viewId}`);
   if (targetPane) targetPane.classList.add("active");
-  if (targetBtn) targetBtn.classList.add("active");
 
-  if (tabId === "admin") {
-    checkAdminAuthState();
+  const breadcrumb = document.getElementById("top-breadcrumb-page");
+  if (viewId === "mod-overview") {
+    document.getElementById("nav-case-queue").classList.add("active");
+    breadcrumb.textContent = "Overview";
+    loadAdminDashboardStats();
+    loadAdminReports();
+  } else if (viewId === "submit") {
+    document.getElementById("nav-submit").classList.add("active");
+    breadcrumb.textContent = "Public Submission";
+  } else if (viewId === "track") {
+    document.getElementById("nav-track").classList.add("active");
+    breadcrumb.textContent = "Public Tracking";
   }
+}
+
+function filterBySidebarStatus(status) {
+  currentSidebarStatusFilter = status;
+  
+  // Update sidebar sub-item active state
+  document.querySelectorAll(".nav-sub-item").forEach(el => el.classList.remove("active"));
+  if (!status) {
+    document.getElementById("filter-view-all").classList.add("active");
+  } else if (status === "SUBMITTED") {
+    document.getElementById("filter-view-submitted").classList.add("active");
+  } else if (status === "UNDER_REVIEW") {
+    document.getElementById("filter-view-review").classList.add("active");
+  } else if (status === "RESOLVED") {
+    document.getElementById("filter-view-resolved").classList.add("active");
+  } else if (status === "DISMISSED") {
+    document.getElementById("filter-view-dismissed").classList.add("active");
+  }
+
+  // Sync with table dropdown if on overview
+  const tableStatusSelect = document.getElementById("table-filter-status");
+  if (tableStatusSelect) {
+    tableStatusSelect.value = status;
+  }
+  
+  switchView("mod-overview");
+  loadAdminReports();
+}
+
+function filterBySidebarSeverity(severity) {
+  const tableSevSelect = document.getElementById("table-filter-severity");
+  if (tableSevSelect) {
+    tableSevSelect.value = severity;
+  }
+  switchView("mod-overview");
+  loadAdminReports();
+}
+
+// --- User Menu ---
+function toggleUserMenu() {
+  const menu = document.getElementById("user-menu-dropdown");
+  menu.classList.toggle("hidden");
+}
+
+document.addEventListener("click", (e) => {
+  const userBtn = document.getElementById("user-avatar-btn");
+  const menu = document.getElementById("user-menu-dropdown");
+  if (userBtn && menu && !userBtn.contains(e.target) && !menu.contains(e.target)) {
+    menu.classList.add("hidden");
+  }
+});
+
+function handleAdminLogout() {
+  currentToken = null;
+  localStorage.removeItem("whistledrop_mod_token");
+  showToast("Moderator session reset", "info");
+  ensureModeratorSession();
 }
 
 // --- Toast Notifications ---
 function showToast(message, type = "info") {
   const toast = document.getElementById("toast");
   toast.textContent = message;
-  toast.className = `toast toast-${type}`;
+  toast.className = `toast-popup toast-${type}`;
   toast.classList.remove("hidden");
   setTimeout(() => {
     toast.classList.add("hidden");
@@ -34,14 +120,14 @@ function showToast(message, type = "info") {
 // --- PII Pre-Check ---
 function debouncePIICheck() {
   clearTimeout(piiTimeout);
-  piiTimeout = setTimeout(triggerPIICheck, 700);
+  piiTimeout = setTimeout(triggerPIICheck, 600);
 }
 
 async function triggerPIICheck() {
-  const desc = document.getElementById("report-description").value.trim();
+  const desc = document.getElementById("input-description").value.trim();
   const banner = document.getElementById("pii-alert-banner");
-  const title = document.getElementById("pii-alert-title");
-  const text = document.getElementById("pii-alert-desc");
+  const title = document.getElementById("pii-banner-title");
+  const text = document.getElementById("pii-banner-desc");
 
   if (desc.length < 15) {
     banner.classList.add("hidden");
@@ -57,80 +143,76 @@ async function triggerPIICheck() {
     const data = await res.json();
 
     if (data.redactions_count > 0) {
-      banner.className = "pii-alert-banner warning";
-      title.textContent = `🛡️ AI Privacy Alert: ${data.redactions_count} Identifier(s) Detected`;
-      text.textContent = `Found: ${data.detected_types.join(", ")}. These will be automatically scrubbed upon transmission.`;
+      banner.classList.remove("hidden");
+      title.textContent = `🛡️ AI Privacy Alert: ${data.redactions_count} Personal Identifier(s) Detected`;
+      text.textContent = `Scrubbing: ${data.detected_types.join(", ")}. These will be masked automatically upon submission.`;
     } else {
-      banner.className = "pii-alert-banner";
+      banner.classList.remove("hidden");
       title.textContent = "🛡️ AI Privacy Check: Clean";
-      text.textContent = "No obvious personal names, emails, IDs, or phone numbers detected.";
+      text.textContent = "No obvious names, emails, student/employee IDs, or phone numbers found.";
     }
-    banner.classList.remove("hidden");
   } catch (err) {
-    console.error("PII check error:", err);
+    console.error("PII preview error:", err);
   }
 }
 
-// --- Report Submission ---
+// --- Anonymous Report Submission ---
 async function handleReportSubmit(e) {
   e.preventDefault();
   const submitBtn = document.getElementById("btn-submit-report");
-  const btnText = submitBtn.querySelector(".btn-text");
-  const spinner = submitBtn.querySelector(".btn-spinner");
+  const originalText = submitBtn.innerHTML;
 
-  const category = document.getElementById("report-category").value;
-  const description = document.getElementById("report-description").value;
-  const evidenceUrl = document.getElementById("report-evidence").value.trim() || null;
+  const category = document.getElementById("input-category").value;
+  const description = document.getElementById("input-description").value;
+  const evidenceUrl = document.getElementById("input-evidence").value.trim() || null;
 
   submitBtn.disabled = true;
-  btnText.textContent = "Encrypting & Scrubbing PII...";
+  submitBtn.innerHTML = "<span>Encrypting & Transmitting...</span>";
 
   try {
     const res = await fetch("/api/reports", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        category,
-        description,
-        evidence_url: evidenceUrl
-      })
+      body: JSON.stringify({ category, description, evidence_url: evidenceUrl })
     });
-
     const data = await res.json();
-    if (!res.ok) {
-      throw new Error(data.detail || "Failed to submit report");
-    }
+    if (!res.ok) throw new Error(data.detail || "Submission failed");
 
     // Populate Success Modal
-    document.getElementById("success-case-code").textContent = data.case_code;
-    document.getElementById("modal-ai-category").textContent = data.ai_analysis.predicted_category || category;
-    document.getElementById("modal-ai-confidence").textContent = data.ai_analysis.confidence 
+    document.getElementById("success-case-code-val").textContent = data.case_code;
+    document.getElementById("modal-ai-cat").textContent = data.ai_analysis.predicted_category || category;
+    document.getElementById("modal-ai-conf").textContent = data.ai_analysis.confidence 
       ? `${(data.ai_analysis.confidence * 100).toFixed(1)}%` 
       : "N/A";
-    document.getElementById("modal-severity-badge").textContent = data.ai_analysis.severity;
-    document.getElementById("modal-severity-badge").className = `severity-badge-pill badge severity-${data.ai_analysis.severity}`;
+    
+    const sevPill = document.getElementById("modal-sev-badge");
+    sevPill.textContent = data.ai_analysis.severity;
+    sevPill.className = `sev-pill sev-${data.ai_analysis.severity}`;
+
     document.getElementById("modal-ai-pii").textContent = data.ai_analysis.pii_redacted 
-      ? `${data.ai_analysis.redactions_count} scrubbed` 
+      ? `${data.ai_analysis.redactions_count} items scrubbed` 
       : "None detected";
 
     document.getElementById("modal-success").classList.remove("hidden");
-    document.getElementById("report-form").reset();
+    document.getElementById("public-report-form").reset();
     document.getElementById("pii-alert-banner").classList.add("hidden");
 
+    // Refresh dashboard stats in background
+    loadAdminDashboardStats();
   } catch (err) {
     showToast(err.message, "error");
   } finally {
     submitBtn.disabled = false;
-    btnText.textContent = "Transmit Anonymous Report";
+    submitBtn.innerHTML = originalText;
   }
 }
 
 function copySuccessCaseCode() {
-  const code = document.getElementById("success-case-code").textContent;
+  const code = document.getElementById("success-case-code-val").textContent;
   navigator.clipboard.writeText(code).then(() => {
-    document.getElementById("copy-btn-text").textContent = "✓ Copied!";
+    document.getElementById("copy-btn-label").textContent = "✓ Copied!";
     setTimeout(() => {
-      document.getElementById("copy-btn-text").textContent = "📋 Copy Code";
+      document.getElementById("copy-btn-label").textContent = "📋 Copy Code";
     }, 2000);
   });
 }
@@ -140,335 +222,332 @@ function closeSuccessModal() {
 }
 
 function proceedToTrackFromModal() {
-  const code = document.getElementById("success-case-code").textContent;
+  const code = document.getElementById("success-case-code-val").textContent;
   closeSuccessModal();
-  switchTab("track");
-  document.getElementById("track-case-code").value = code;
-  document.getElementById("track-form").dispatchEvent(new Event("submit"));
+  switchView("track");
+  document.getElementById("input-track-code").value = code;
+  document.getElementById("public-track-form").dispatchEvent(new Event("submit"));
 }
 
-// --- Tracking ---
+// --- Public Case Tracking ---
 async function handleTrackSubmit(e) {
   e.preventDefault();
-  const codeInput = document.getElementById("track-case-code");
+  const codeInput = document.getElementById("input-track-code");
   const code = codeInput.value.trim().toUpperCase();
-  const resultContainer = document.getElementById("track-result-container");
+  const resultWrap = document.getElementById("track-result-wrap");
 
   try {
     const res = await fetch(`/api/reports/${encodeURIComponent(code)}`);
     const data = await res.json();
+    if (!res.ok) throw new Error(data.detail || "Case code not found");
 
-    if (!res.ok) {
-      throw new Error(data.detail || "Unable to find case record");
-    }
-
-    // Populate Details
-    document.getElementById("track-display-code").textContent = data.case_code;
+    document.getElementById("track-disp-code").textContent = data.case_code;
+    document.getElementById("track-disp-cat").textContent = data.category;
     
-    const catBadge = document.getElementById("track-display-category");
-    catBadge.textContent = data.category;
-    
-    const sevBadge = document.getElementById("track-display-severity");
-    sevBadge.textContent = data.severity;
-    sevBadge.className = `badge severity-${data.severity}`;
+    const sevPill = document.getElementById("track-disp-sev");
+    sevPill.textContent = data.severity;
+    sevPill.className = `sev-pill sev-${data.severity}`;
 
-    const stBadge = document.getElementById("track-display-status");
-    stBadge.textContent = data.status;
-    stBadge.className = `badge status-badge status-${data.status}`;
+    const stPill = document.getElementById("track-disp-status");
+    stPill.textContent = formatStatusLabel(data.status);
+    stPill.className = `status-pill status-${data.status}`;
 
-    // Stepper logic
-    updateStepper(data.status);
+    // Stepper
+    updateTrackStepper(data.status);
 
-    // Timeline updates
-    const feed = document.getElementById("track-timeline-feed");
-    feed.innerHTML = "";
+    // Timeline Stream
+    const stream = document.getElementById("track-timeline-stream");
+    stream.innerHTML = "";
     if (data.updates && data.updates.length > 0) {
-      data.updates.forEach(upd => {
-        const item = document.createElement("div");
-        item.className = "timeline-item";
-        item.innerHTML = `
-          <div class="timeline-dot"></div>
-          <div class="timeline-content">
-            <div class="timeline-header">
-              <span class="timeline-status">${upd.status}</span>
-              <span class="timeline-date">${new Date(upd.timestamp).toLocaleString()}</span>
+      data.updates.forEach(u => {
+        const row = document.createElement("div");
+        row.className = "timeline-row";
+        row.innerHTML = `
+          <div class="timeline-bullet"></div>
+          <div class="timeline-bubble">
+            <div class="bubble-head">
+              <span class="bubble-status">${formatStatusLabel(u.status)}</span>
+              <span class="bubble-date">${new Date(u.timestamp).toLocaleString()}</span>
             </div>
-            <div class="timeline-message">${escapeHtml(upd.message)}</div>
+            <p class="bubble-text">${escapeHtml(u.message)}</p>
           </div>
         `;
-        feed.appendChild(item);
+        stream.appendChild(row);
       });
     }
 
-    resultContainer.classList.remove("hidden");
+    resultWrap.classList.remove("hidden");
   } catch (err) {
     showToast(err.message, "error");
-    resultContainer.classList.add("hidden");
+    resultWrap.classList.add("hidden");
   }
 }
 
-function updateStepper(status) {
-  const stepSub = document.getElementById("step-submitted");
-  const stepRev = document.getElementById("step-under-review");
-  const stepRes = document.getElementById("step-resolved");
-  const line1 = document.getElementById("line-1");
-  const line2 = document.getElementById("line-2");
+function updateTrackStepper(status) {
+  const s1 = document.getElementById("track-step-1");
+  const s2 = document.getElementById("track-step-2");
+  const s3 = document.getElementById("track-step-3");
+  const c1 = document.getElementById("track-conn-1");
+  const c2 = document.getElementById("track-conn-2");
 
-  // Reset
-  [stepSub, stepRev, stepRes].forEach(s => s.className = "stepper-step");
-  [line1, line2].forEach(l => l.className = "stepper-line");
+  [s1, s2, s3].forEach(s => s.className = "stepper-item");
+  [c1, c2].forEach(c => c.className = "stepper-connector");
 
   if (status === "SUBMITTED") {
-    stepSub.classList.add("active");
+    s1.classList.add("active");
   } else if (status === "UNDER_REVIEW") {
-    stepSub.classList.add("completed");
-    line1.classList.add("active");
-    stepRev.classList.add("active");
+    s1.classList.add("completed");
+    c1.classList.add("active");
+    s2.classList.add("active");
   } else if (status === "RESOLVED" || status === "DISMISSED") {
-    stepSub.classList.add("completed");
-    line1.classList.add("active");
-    stepRev.classList.add("completed");
-    line2.classList.add("active");
-    stepRes.classList.add("completed");
-    stepRes.querySelector(".step-label").textContent = status === "RESOLVED" ? "Resolved" : "Dismissed";
+    s1.classList.add("completed");
+    c1.classList.add("active");
+    s2.classList.add("completed");
+    c2.classList.add("active");
+    s3.classList.add("completed");
+    s3.querySelector(".step-title").textContent = status === "RESOLVED" ? "Resolved" : "Dismissed";
   }
 }
 
-// --- Moderator Portal ---
-function checkAdminAuthState() {
-  if (currentToken) {
-    document.getElementById("admin-login-view").classList.add("hidden");
-    document.getElementById("admin-dashboard-view").classList.remove("hidden");
-    loadAdminDashboardStats();
-    loadAdminReports();
-  } else {
-    document.getElementById("admin-login-view").classList.remove("hidden");
-    document.getElementById("admin-dashboard-view").classList.add("hidden");
-  }
-}
-
-async function handleAdminLogin(e) {
-  e.preventDefault();
-  const usernameInput = document.getElementById("admin-username").value;
-  const passwordInput = document.getElementById("admin-password").value;
-
-  try {
-    const res = await fetch("/api/auth/login", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ username: usernameInput, password: passwordInput })
-    });
-    const data = await res.json();
-    if (!res.ok) {
-      throw new Error(data.detail || "Authentication failed");
-    }
-
-    currentToken = data.access_token;
-    localStorage.setItem("whistledrop_mod_token", currentToken);
-    document.getElementById("current-mod-username").textContent = data.username;
-    checkAdminAuthState();
-    showToast("Authenticated successfully as Moderator", "success");
-  } catch (err) {
-    showToast(err.message, "error");
-  }
-}
-
-function handleAdminLogout() {
-  currentToken = null;
-  localStorage.removeItem("whistledrop_mod_token");
-  checkAdminAuthState();
-  showToast("Signed out", "info");
-}
-
+// --- Moderator Command Center (Dashboard Telemetry & Table) ---
 async function loadAdminDashboardStats() {
+  await ensureModeratorSession();
   try {
     const res = await fetch("/api/admin/dashboard/stats", {
       headers: { "Authorization": `Bearer ${currentToken}` }
     });
-    if (res.status === 401) {
-      handleAdminLogout();
-      return;
-    }
-    const data = await res.json();
+    if (!res.ok) return;
+    const stats = await res.json();
 
-    document.getElementById("stat-total").textContent = data.total_reports || 0;
-    document.getElementById("stat-pending").textContent = (data.by_status.UNDER_REVIEW || 0) + (data.by_status.SUBMITTED || 0);
-    document.getElementById("stat-critical").textContent = data.by_severity.CRITICAL || 0;
-    document.getElementById("stat-resolved").textContent = (data.by_status.RESOLVED || 0);
+    const total = stats.total_reports || 0;
+    const sub = stats.by_status.SUBMITTED || 0;
+    const rev = stats.by_status.UNDER_REVIEW || 0;
+    const resCount = stats.by_status.RESOLVED || 0;
+    const dis = stats.by_status.DISMISSED || 0;
+
+    // KPI row
+    document.getElementById("stat-total").textContent = String(total).padStart(2, "0");
+    document.getElementById("stat-total-sub").textContent = `${total} illustrative cases in registry`;
+
+    document.getElementById("stat-submitted").textContent = sub;
+    document.getElementById("stat-submitted-sub").textContent = `${sub} of ${total} reports`;
+
+    document.getElementById("stat-review").textContent = rev;
+    document.getElementById("stat-review-sub").textContent = `${rev} of ${total} reports`;
+
+    document.getElementById("stat-resolved").textContent = resCount;
+    document.getElementById("stat-resolved-sub").textContent = `${resCount} of ${total} reports`;
+
+    document.getElementById("stat-dismissed").textContent = dis;
+    document.getElementById("stat-dismissed-sub").textContent = dis > 0 ? `${dis} of ${total} reports` : "No cases in view";
+
+    // Sidebar counts
+    document.getElementById("sidebar-total-badge").textContent = total;
+    document.getElementById("sidebar-cnt-all").textContent = total;
+    document.getElementById("sidebar-cnt-submitted").textContent = sub;
+    document.getElementById("sidebar-cnt-review").textContent = rev;
+    document.getElementById("sidebar-cnt-resolved").textContent = resCount;
+    document.getElementById("sidebar-cnt-dismissed").textContent = dis;
+
+    // Severity Mix Widget
+    const crit = stats.by_severity.CRITICAL || 0;
+    const high = stats.by_severity.HIGH || 0;
+    const med = stats.by_severity.MEDIUM || 0;
+    const low = stats.by_severity.LOW || 0;
+
+    document.getElementById("severity-distribution-sub").textContent = `Current distribution · ${total} cases`;
+    document.getElementById("sev-bar-cnt-crit").textContent = `${crit} / ${total}`;
+    document.getElementById("sev-bar-cnt-high").textContent = `${high} / ${total}`;
+    document.getElementById("sev-bar-cnt-med").textContent = `${med} / ${total}`;
+    document.getElementById("sev-bar-cnt-low").textContent = `${low} / ${total}`;
+
+    const pct = (n) => total > 0 ? `${((n / total) * 100).toFixed(1)}%` : "0%";
+    document.getElementById("sev-bar-fill-crit").style.width = pct(crit);
+    document.getElementById("sev-bar-fill-high").style.width = pct(high);
+    document.getElementById("sev-bar-fill-med").style.width = pct(med);
+    document.getElementById("sev-bar-fill-low").style.width = pct(low);
+
+    // AI & Privacy Signals Widget
+    document.getElementById("metric-auto-classified").textContent = stats.ai_metrics.auto_classified || 0;
+    document.getElementById("metric-flagged-review").textContent = stats.ai_metrics.flagged_for_review || 0;
+    document.getElementById("metric-redactions-total").textContent = stats.ai_metrics.privacy_redacted_cases || 0;
+    document.getElementById("metric-high-conf").textContent = `${Math.round((stats.ai_metrics.high_confidence_ratio || 0.8) * 100)}%`;
+
+    // Category Coverage Widget
+    document.getElementById("cat-cnt-sec").textContent = stats.by_category.Security || 0;
+    document.getElementById("cat-cnt-har").textContent = stats.by_category.Harassment || 0;
+    document.getElementById("cat-cnt-cor").textContent = stats.by_category.Corruption || 0;
+    document.getElementById("cat-cnt-tec").textContent = stats.by_category.Technical || 0;
+    document.getElementById("cat-cnt-oth").textContent = stats.by_category.Other || 0;
+
   } catch (err) {
-    console.error("Dashboard stats error:", err);
+    console.error("Dashboard metrics load error:", err);
   }
 }
 
 function debounceAdminSearch() {
   clearTimeout(searchTimeout);
-  searchTimeout = setTimeout(loadAdminReports, 400);
+  searchTimeout = setTimeout(loadAdminReports, 300);
 }
 
 async function loadAdminReports() {
-  const status = document.getElementById("filter-status").value;
-  const category = document.getElementById("filter-category").value;
-  const severity = document.getElementById("filter-severity").value;
-  const search = document.getElementById("filter-search").value.trim();
+  await ensureModeratorSession();
+  const statusFilter = document.getElementById("table-filter-status").value || currentSidebarStatusFilter;
+  const catFilter = document.getElementById("table-filter-category").value;
+  const sevFilter = document.getElementById("table-filter-severity").value;
+  const searchVal = document.getElementById("table-search-input").value.trim();
 
   const params = new URLSearchParams();
-  if (status) params.append("status", status);
-  if (category) params.append("category", category);
-  if (severity) params.append("severity", severity);
-  if (search) params.append("search", search);
+  if (statusFilter) params.append("status", statusFilter);
+  if (catFilter) params.append("category", catFilter);
+  if (sevFilter) params.append("severity", sevFilter);
+  if (searchVal) params.append("search", searchVal);
   params.append("limit", "50");
 
   try {
     const res = await fetch(`/api/admin/reports?${params.toString()}`, {
       headers: { "Authorization": `Bearer ${currentToken}` }
     });
-    if (res.status === 401) {
-      handleAdminLogout();
-      return;
-    }
+    if (!res.ok) return;
     const data = await res.json();
-    const tbody = document.getElementById("reports-table-body");
+    const tbody = document.getElementById("queue-table-body");
     tbody.innerHTML = "";
 
+    document.getElementById("queue-count-tag").textContent = `● ${data.reports.length} shown / ${data.total} total cases`;
+
     if (!data.reports || data.reports.length === 0) {
-      tbody.innerHTML = `<tr><td colspan="8" style="text-align: center; color: var(--text-dim); padding: 2rem;">No whistleblower reports match the current filter criteria.</td></tr>`;
+      tbody.innerHTML = `<tr><td colspan="5" style="text-align: center; color: var(--ink-400); padding: 2.5rem;">No cases match current filter criteria.</td></tr>`;
       return;
     }
 
     data.reports.forEach(r => {
       const tr = document.createElement("tr");
-      const confPercent = r.ai_confidence ? `${(r.ai_confidence * 100).toFixed(0)}%` : "--";
-      
+      tr.onclick = () => openCaseDossier(r.id);
+
       tr.innerHTML = `
-        <td><span class="table-code">${r.case_code}</span></td>
-        <td>${r.category}</td>
-        <td>
-          <div class="table-ai-pill">
-            <strong>${r.ai_category || r.category}</strong>
-            <span class="table-conf">Conf: ${confPercent}</span>
+        <td class="td-case">
+          <div class="case-code-wrap">
+            <div class="row-code-line">
+              <span class="row-case-code">${r.case_code}</span>
+              ${r.pii_redacted ? `<span class="row-redacted-badge">🛡️ ${r.redactions_count} redacted in record</span>` : ""}
+            </div>
+            <div class="row-summary-text">${escapeHtml(r.description_preview)}</div>
           </div>
         </td>
-        <td><span class="badge severity-${r.severity}">${r.severity}</span></td>
-        <td><span class="badge status-badge status-${r.status}">${r.status}</span></td>
-        <td>
-          ${r.similar_reports_count > 0 
-            ? `<span class="badge" style="background: rgba(245, 158, 11, 0.2); color: #fbbf24;">⚠️ ${r.similar_reports_count} similar</span>` 
-            : `<span style="color: var(--text-dim); font-size: 0.8rem;">None</span>`}
-        </td>
-        <td style="color: var(--text-dim); font-size: 0.8rem;">${new Date(r.created_at).toLocaleDateString()}</td>
-        <td>
-          <button class="btn-secondary btn-sm" onclick="inspectReport('${r.id}')">Inspect</button>
-        </td>
+        <td class="td-cat"><span class="row-cat-text">${r.category}</span></td>
+        <td class="td-sev"><span class="sev-pill sev-${r.severity}">${r.severity}</span></td>
+        <td class="td-status"><span class="status-pill status-${r.status}">${formatStatusLabel(r.status)}</span></td>
+        <td class="td-action"><span class="row-chevron">›</span></td>
       `;
       tbody.appendChild(tr);
     });
 
   } catch (err) {
-    console.error("Error loading reports:", err);
+    console.error("Queue table error:", err);
   }
 }
 
-// --- Report Inspector Drawer ---
-async function inspectReport(reportId) {
+// --- Case Dossier Inspector Drawer ---
+async function openCaseDossier(reportId) {
+  await ensureModeratorSession();
   try {
     const res = await fetch(`/api/admin/reports/${reportId}`, {
       headers: { "Authorization": `Bearer ${currentToken}` }
     });
-    const report = await res.json();
-    if (!res.ok) throw new Error(report.detail || "Failed to fetch report details");
+    if (!res.ok) throw new Error("Unable to retrieve case record");
+    const r = await res.json();
 
-    document.getElementById("update-report-id").value = report.id;
-    document.getElementById("inspect-case-code").textContent = report.case_code;
-    document.getElementById("inspect-category").textContent = report.category;
+    document.getElementById("dossier-target-id").value = r.id;
+    document.getElementById("dossier-case-code").textContent = r.case_code;
     
-    const sevBadge = document.getElementById("inspect-severity");
-    sevBadge.textContent = report.severity;
-    sevBadge.className = `badge severity-${report.severity}`;
+    document.getElementById("dossier-cat-badge").textContent = r.category;
+    
+    const sevPill = document.getElementById("dossier-sev-badge");
+    sevPill.textContent = r.severity;
+    sevPill.className = `sev-pill sev-${r.severity}`;
 
-    const stBadge = document.getElementById("inspect-status");
-    stBadge.textContent = report.status;
-    stBadge.className = `badge status-badge status-${report.status}`;
+    const stPill = document.getElementById("dossier-status-badge");
+    stPill.textContent = formatStatusLabel(r.status);
+    stPill.className = `status-pill status-${r.status}`;
 
-    document.getElementById("inspect-pii-badge").textContent = report.pii_redacted 
-      ? `🛡️ ${report.redactions_count} PII Items Scrubbed`
+    document.getElementById("dossier-pii-badge").textContent = r.pii_redacted 
+      ? `🛡️ ${r.redactions_count} PII Items Scrubbed`
       : "🛡️ Zero PII Detected";
 
-    document.getElementById("inspect-description").textContent = report.description;
+    document.getElementById("dossier-narrative-text").textContent = r.description;
 
-    const evBox = document.getElementById("inspect-evidence-link");
-    const evUrl = document.getElementById("inspect-evidence-url");
-    if (report.evidence_url) {
-      evUrl.href = report.evidence_url;
-      evUrl.textContent = report.evidence_url;
-      evBox.classList.remove("hidden");
+    const evWrap = document.getElementById("dossier-evidence-wrap");
+    const evUrl = document.getElementById("dossier-evidence-url");
+    if (r.evidence_url) {
+      evUrl.href = r.evidence_url;
+      evUrl.textContent = r.evidence_url;
+      evWrap.classList.remove("hidden");
     } else {
-      evBox.classList.add("hidden");
+      evWrap.classList.add("hidden");
     }
 
     // AI Confidence & Themes
-    document.getElementById("inspect-ai-category").textContent = report.ai_category || report.category;
-    const confVal = report.ai_confidence ? (report.ai_confidence * 100).toFixed(1) : 0;
-    document.getElementById("inspect-ai-conf-text").textContent = `Confidence: ${confVal}%`;
-    document.getElementById("inspect-ai-conf-bar").style.width = `${confVal}%`;
+    const confVal = r.ai_confidence ? (r.ai_confidence * 100).toFixed(1) : 0;
+    document.getElementById("dossier-ai-conf-num").textContent = `Confidence: ${confVal}%`;
+    document.getElementById("dossier-conf-bar").style.width = `${confVal}%`;
 
-    // Tags
-    const tagsContainer = document.getElementById("inspect-tags-container");
-    tagsContainer.innerHTML = "";
-    if (report.ai_tags && report.ai_tags.length > 0) {
-      report.ai_tags.forEach(t => {
-        const chip = document.createElement("span");
-        chip.className = "tag-chip";
-        chip.textContent = `#${t}`;
-        tagsContainer.appendChild(chip);
+    const tagCloud = document.getElementById("dossier-tags-cloud");
+    tagCloud.innerHTML = "";
+    if (r.ai_tags && r.ai_tags.length > 0) {
+      r.ai_tags.forEach(t => {
+        const badge = document.createElement("span");
+        badge.className = "tag-badge";
+        badge.textContent = `#${t}`;
+        tagCloud.appendChild(badge);
       });
     } else {
-      tagsContainer.innerHTML = `<span style="color: var(--text-dim); font-size: 0.8rem;">No tags extracted</span>`;
+      tagCloud.innerHTML = `<span style="font-size: 0.75rem; color: var(--ink-400);">No specific tags extracted</span>`;
     }
 
-    // Similar reports
-    const simList = document.getElementById("inspect-similar-list");
-    simList.innerHTML = "";
-    if (report.similar_reports && report.similar_reports.length > 0) {
-      report.similar_reports.forEach(sim => {
-        const item = document.createElement("div");
-        item.className = "similar-case-item";
-        item.innerHTML = `
+    // Similar / Duplicate Incidents
+    const simFeed = document.getElementById("dossier-similar-feed");
+    simFeed.innerHTML = "";
+    if (r.similar_reports && r.similar_reports.length > 0) {
+      r.similar_reports.forEach(sim => {
+        const row = document.createElement("div");
+        row.className = "similar-row";
+        row.innerHTML = `
           <div>
-            <strong style="color: var(--cyan); font-family: var(--font-mono);">${sim.case_code}</strong>
-            <span style="margin-left: 0.5rem; font-size: 0.8rem; color: var(--text-dim);">(${sim.category} - ${sim.status})</span>
+            <strong class="sim-code">${sim.case_code}</strong>
+            <span style="font-size: 0.75rem; color: var(--ink-400); margin-left: 0.4rem;">(${sim.category} · ${formatStatusLabel(sim.status)})</span>
           </div>
-          <span class="similar-match-pill">${(sim.similarity * 100).toFixed(0)}% Cosine Match</span>
+          <span class="sim-match-pill">${(sim.similarity * 100).toFixed(0)}% Cosine Match</span>
         `;
-        simList.appendChild(item);
+        simFeed.appendChild(row);
       });
     } else {
-      simList.innerHTML = `<div style="color: var(--text-dim); font-size: 0.85rem;">No co-related or duplicate incidents found in registry.</div>`;
+      simFeed.innerHTML = `<div style="font-size: 0.8rem; color: var(--ink-400);">No duplicate or related incidents found in current registry.</div>`;
     }
 
-    // Timeline updates
-    const tFeed = document.getElementById("inspect-timeline-feed");
-    tFeed.innerHTML = "";
-    if (report.updates) {
-      report.updates.forEach(u => {
-        const tItem = document.createElement("div");
-        tItem.className = "timeline-item";
-        tItem.innerHTML = `
-          <div class="timeline-dot"></div>
-          <div class="timeline-content">
-            <div class="timeline-header">
-              <span class="timeline-status">${u.status}</span>
-              <span class="timeline-date">${new Date(u.timestamp).toLocaleString()}</span>
+    // Timeline Stream
+    const timeStream = document.getElementById("dossier-timeline-feed");
+    timeStream.innerHTML = "";
+    if (r.updates) {
+      r.updates.forEach(u => {
+        const row = document.createElement("div");
+        row.className = "timeline-row";
+        row.innerHTML = `
+          <div class="timeline-bullet"></div>
+          <div class="timeline-bubble">
+            <div class="bubble-head">
+              <span class="bubble-status">${formatStatusLabel(u.status)}</span>
+              <span class="bubble-date">${new Date(u.timestamp).toLocaleString()}</span>
             </div>
-            <div class="timeline-message">${escapeHtml(u.message)}</div>
+            <p class="bubble-text">${escapeHtml(u.message)}</p>
           </div>
         `;
-        tFeed.appendChild(tItem);
+        timeStream.appendChild(row);
       });
     }
 
-    // Status select defaults
-    document.getElementById("new-status-select").value = report.status === "SUBMITTED" ? "UNDER_REVIEW" : report.status;
-    document.getElementById("status-note-input").value = "";
+    // Form inputs default
+    document.getElementById("dossier-status-select").value = r.status === "SUBMITTED" ? "UNDER_REVIEW" : r.status;
+    document.getElementById("dossier-audit-note").value = "";
 
     document.getElementById("modal-inspector").classList.remove("hidden");
   } catch (err) {
@@ -482,9 +561,9 @@ function closeInspectorModal() {
 
 async function handleStatusUpdateSubmit(e) {
   e.preventDefault();
-  const reportId = document.getElementById("update-report-id").value;
-  const newStatus = document.getElementById("new-status-select").value;
-  const message = document.getElementById("status-note-input").value.trim();
+  const reportId = document.getElementById("dossier-target-id").value;
+  const newStatus = document.getElementById("dossier-status-select").value;
+  const message = document.getElementById("dossier-audit-note").value.trim();
 
   try {
     const res = await fetch(`/api/admin/reports/${reportId}/status`, {
@@ -493,15 +572,12 @@ async function handleStatusUpdateSubmit(e) {
         "Content-Type": "application/json",
         "Authorization": `Bearer ${currentToken}`
       },
-      body: JSON.stringify({ status: newStatus, message: message })
+      body: JSON.stringify({ status: newStatus, message })
     });
-
     const data = await res.json();
-    if (!res.ok) {
-      throw new Error(data.detail || "Status transition rejected");
-    }
+    if (!res.ok) throw new Error(data.detail || "Status transition rejected");
 
-    showToast("Case status updated successfully!", "success");
+    showToast("Status transition recorded successfully", "success");
     closeInspectorModal();
     loadAdminDashboardStats();
     loadAdminReports();
@@ -510,8 +586,24 @@ async function handleStatusUpdateSubmit(e) {
   }
 }
 
-// Security helper
+// Helpers
+function formatStatusLabel(st) {
+  if (st === "UNDER_REVIEW") return "Under review";
+  if (st === "SUBMITTED") return "Submitted";
+  if (st === "RESOLVED") return "Resolved";
+  if (st === "DISMISSED") return "Dismissed";
+  return st;
+}
+
 function escapeHtml(text) {
   const map = { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#039;' };
   return String(text).replace(/[&<>"']/g, m => map[m]);
 }
+
+// Bootstrap on page load
+document.addEventListener("DOMContentLoaded", () => {
+  ensureModeratorSession().then(() => {
+    loadAdminDashboardStats();
+    loadAdminReports();
+  });
+});
