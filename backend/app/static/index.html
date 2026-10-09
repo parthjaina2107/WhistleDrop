@@ -1,0 +1,522 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>WhistleDrop — Speak Without Being Seen</title>
+  <meta name="description" content="Secure, anonymous whistleblower reporting platform powered by applied machine learning and zero-knowledge privacy guarantees.">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Outfit:wght@500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+  <!-- Ambient background glow -->
+  <div class="glow-orb orb-1"></div>
+  <div class="glow-orb orb-2"></div>
+  <div class="glow-orb orb-3"></div>
+
+  <!-- Navigation Header -->
+  <header class="navbar">
+    <div class="nav-container">
+      <div class="brand" id="brand-logo" onclick="switchTab('submit')">
+        <div class="brand-icon">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
+            <path d="M9 12l2 2 4-4"/>
+          </svg>
+        </div>
+        <div class="brand-text">
+          <span class="brand-title">Whistle<span class="highlight">Drop</span></span>
+          <span class="brand-badge">ANONYMOUS & AI-POWERED</span>
+        </div>
+      </div>
+
+      <nav class="nav-links">
+        <button class="nav-btn active" id="nav-btn-submit" onclick="switchTab('submit')">
+          <span class="nav-icon">📝</span> Submit Report
+        </button>
+        <button class="nav-btn" id="nav-btn-track" onclick="switchTab('track')">
+          <span class="nav-icon">🔍</span> Track Case
+        </button>
+        <button class="nav-btn" id="nav-btn-admin" onclick="switchTab('admin')">
+          <span class="nav-icon">🛡️</span> Moderator Portal
+        </button>
+        <a href="/docs" target="_blank" class="nav-btn api-link" id="nav-btn-api">
+          <span class="nav-icon">⚡</span> Swagger API
+        </a>
+      </nav>
+    </div>
+  </header>
+
+  <main class="main-content">
+    <!-- TAB 1: SUBMIT REPORT -->
+    <section id="tab-submit" class="tab-pane active">
+      <div class="hero-section">
+        <div class="shield-badge">
+          <span class="pulse-dot"></span> 100% Zero-Knowledge Anonymity Guaranteed
+        </div>
+        <h1 class="hero-title">Speak Without Being Seen.</h1>
+        <p class="hero-subtitle">
+          Expose ethical violations, security threats, corruption, or harassment safely. 
+          Zero accounts, zero IP logging, and automated AI protection against accidental identity leaks.
+        </p>
+      </div>
+
+      <div class="form-card glass-panel">
+        <div class="card-header">
+          <div class="card-title">
+            <span class="icon">🔒</span> Confidential Whistleblower Submission
+          </div>
+          <div class="anonymity-indicator" title="Your client IP and browser headers are automatically stripped.">
+            <svg class="lock-icon" viewBox="0 0 24 24" fill="currentColor">
+              <path d="M18 8h-1V6c0-2.76-2.24-5-5-5S7 3.24 7 6v2H6c-1.1 0-2 .9-2 2v10c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V10c0-1.1-.9-2-2-2zm-6 9c-1.1 0-2-.9-2-2s.9-2 2-2 2 .9 2 2-.9 2-2 2zm3.1-9H8.9V6c0-1.71 1.39-3.1 3.1-3.1 1.71 0 3.1 1.39 3.1 3.1v2z"/>
+            </svg>
+            Untraceable Session
+          </div>
+        </div>
+
+        <form id="report-form" onsubmit="handleReportSubmit(event)">
+          <!-- Category Selection -->
+          <div class="form-group">
+            <label for="report-category">Incident Category <span class="required">*</span></label>
+            <div class="select-wrapper">
+              <select id="report-category" required>
+                <option value="" disabled selected>Select an incident category...</option>
+                <option value="Security">🛡️ Security (Breach, Vulnerability, Leaked Keys)</option>
+                <option value="Harassment">⚠️ Harassment (Bullying, Abuse, Discrimination)</option>
+                <option value="Corruption">⚖️ Corruption (Bribery, Embezzlement, Fraud)</option>
+                <option value="Technical">💻 Technical (Infrastructure Failure, Critical Bugs)</option>
+                <option value="Other">📋 Other (Policy Violations, Institutional Neglect)</option>
+              </select>
+            </div>
+            <div class="hint-text">The AI classifier will also independently assess and verify the category.</div>
+          </div>
+
+          <!-- Description -->
+          <div class="form-group">
+            <div class="label-row">
+              <label for="report-description">Detailed Incident Narrative <span class="required">*</span></label>
+              <button type="button" class="btn-text-action" id="btn-preview-pii" onclick="triggerPIICheck()">
+                <span>🛡️ AI Privacy Pre-Check</span>
+              </button>
+            </div>
+            <textarea 
+              id="report-description" 
+              rows="7" 
+              placeholder="Describe what occurred, who was affected, and the context. (Avoid including your own name or phone number—our AI redactor will also automatically scrub any detected personal identifiers)." 
+              required
+              minlength="10"
+              oninput="debouncePIICheck()"
+            ></textarea>
+            
+            <!-- Real-time PII Alert Banner -->
+            <div id="pii-alert-banner" class="pii-alert-banner hidden">
+              <div class="alert-icon">🛡️</div>
+              <div class="alert-content">
+                <div class="alert-title" id="pii-alert-title">AI Privacy Guardian Active</div>
+                <div class="alert-desc" id="pii-alert-desc">Scanning text for accidental personal details...</div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Evidence Link -->
+          <div class="form-group">
+            <label for="report-evidence">Optional Evidence / Document Reference URL</label>
+            <div class="input-icon-wrapper">
+              <span class="input-icon">🔗</span>
+              <input 
+                type="url" 
+                id="report-evidence" 
+                placeholder="https://drive.google.com/... or https://pastebin.com/..."
+              >
+            </div>
+            <div class="hint-text">Link to screenshots, logs, or supporting evidence. Ensure no personal metadata is attached.</div>
+          </div>
+
+          <!-- Submit Button -->
+          <div class="form-actions">
+            <button type="submit" class="btn-primary" id="btn-submit-report">
+              <span class="btn-text">Transmit Anonymous Report</span>
+              <span class="btn-spinner hidden"></span>
+            </button>
+          </div>
+        </form>
+      </div>
+
+      <!-- Features Pillars -->
+      <div class="features-grid">
+        <div class="feature-card glass-panel">
+          <div class="feat-icon">🕵️</div>
+          <h3>Zero-Knowledge Architecture</h3>
+          <p>No user accounts, sessions, or IP logs. Submissions cannot be traced back to physical devices or identities.</p>
+        </div>
+        <div class="feature-card glass-panel">
+          <div class="feat-icon">🤖</div>
+          <h3>Applied Machine Learning</h3>
+          <p>Calibrated TF-IDF + Naive Bayes categorization, urgency triage scoring, and semantic similarity duplicate matching.</p>
+        </div>
+        <div class="feature-card glass-panel">
+          <div class="feat-icon">🔑</div>
+          <h3>Cryptographic Case Codes</h3>
+          <p>Each submission generates a high-entropy 12-character token. Save it to track updates without logging in.</p>
+        </div>
+      </div>
+    </section>
+
+    <!-- TAB 2: TRACK CASE -->
+    <section id="tab-track" class="tab-pane">
+      <div class="hero-section compact">
+        <h1 class="hero-title">Track Case Status</h1>
+        <p class="hero-subtitle">Enter your private Case Code to check resolution progress and view investigator notes.</p>
+      </div>
+
+      <div class="track-card glass-panel">
+        <form id="track-form" onsubmit="handleTrackSubmit(event)">
+          <div class="track-input-row">
+            <div class="input-icon-wrapper flex-grow">
+              <span class="input-icon">🔑</span>
+              <input 
+                type="text" 
+                id="track-case-code" 
+                placeholder="WD-XXXX-XXXX-XXXX" 
+                required
+                autocomplete="off"
+                spellcheck="false"
+              >
+            </div>
+            <button type="submit" class="btn-primary" id="btn-track-case">
+              <span class="btn-text">Check Progress</span>
+              <span class="btn-spinner hidden"></span>
+            </button>
+          </div>
+        </form>
+
+        <!-- Tracking Results Container -->
+        <div id="track-result-container" class="track-result hidden">
+          <div class="case-header-row">
+            <div>
+              <div class="label-muted">CASE TRACKING CODE</div>
+              <div class="case-code-display" id="track-display-code">WD-XXXX-XXXX-XXXX</div>
+            </div>
+            <div class="badge-group">
+              <span class="badge" id="track-display-category">Security</span>
+              <span class="badge" id="track-display-severity">CRITICAL</span>
+              <span class="badge status-badge" id="track-display-status">UNDER_REVIEW</span>
+            </div>
+          </div>
+
+          <!-- Progress Stepper -->
+          <div class="stepper-container">
+            <div class="stepper-step" id="step-submitted">
+              <div class="step-circle">1</div>
+              <div class="step-label">Submitted</div>
+            </div>
+            <div class="stepper-line" id="line-1"></div>
+            <div class="stepper-step" id="step-under-review">
+              <div class="step-circle">2</div>
+              <div class="step-label">Under Review</div>
+            </div>
+            <div class="stepper-line" id="line-2"></div>
+            <div class="stepper-step" id="step-resolved">
+              <div class="step-circle">3</div>
+              <div class="step-label">Resolved / Concluded</div>
+            </div>
+          </div>
+
+          <!-- Case Updates Timeline -->
+          <div class="timeline-section">
+            <h3 class="section-title">Case Activity Log</h3>
+            <div class="timeline-feed" id="track-timeline-feed">
+              <!-- Dynamically populated -->
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- TAB 3: MODERATOR PORTAL -->
+    <section id="tab-admin" class="tab-pane">
+      <!-- Admin Login View (if not authenticated) -->
+      <div id="admin-login-view" class="admin-login-card glass-panel">
+        <div class="shield-badge">🔒 Restricted Access</div>
+        <h2>Moderator Authentication</h2>
+        <p class="hero-subtitle">Sign in to review whistleblower reports, conduct triage, and update case resolutions.</p>
+        
+        <form id="admin-login-form" onsubmit="handleAdminLogin(event)">
+          <div class="form-group">
+            <label for="admin-username">Username</label>
+            <input type="text" id="admin-username" value="moderator" required>
+          </div>
+          <div class="form-group">
+            <label for="admin-password">Password</label>
+            <input type="password" id="admin-password" value="WhistleDrop@2026" required>
+          </div>
+          <div class="demo-credential-tip">
+            <span>💡 Default GDG evaluation credentials pre-filled</span>
+          </div>
+          <button type="submit" class="btn-primary full-width" id="btn-admin-login">
+            <span class="btn-text">Authenticate as Moderator</span>
+            <span class="btn-spinner hidden"></span>
+          </button>
+        </form>
+      </div>
+
+      <!-- Admin Dashboard View (when authenticated) -->
+      <div id="admin-dashboard-view" class="admin-dashboard-content hidden">
+        <!-- Dashboard Top Bar -->
+        <div class="dashboard-topbar">
+          <div>
+            <h2 class="dash-title">Investigation & Triage Command Center</h2>
+            <p class="dash-subtitle">Real-time anonymous incident tracking and AI triage telemetry.</p>
+          </div>
+          <div class="admin-user-info">
+            <span class="mod-status-dot"></span>
+            <span id="current-mod-username">moderator</span>
+            <button class="btn-secondary btn-sm" onclick="handleAdminLogout()">Sign Out</button>
+          </div>
+        </div>
+
+        <!-- Metrics KPI Cards -->
+        <div class="kpi-grid">
+          <div class="kpi-card glass-panel">
+            <div class="kpi-label">TOTAL REPORTS</div>
+            <div class="kpi-value" id="stat-total">0</div>
+            <div class="kpi-subtext">All-time received</div>
+          </div>
+          <div class="kpi-card glass-panel kpi-pending">
+            <div class="kpi-label">UNDER REVIEW</div>
+            <div class="kpi-value" id="stat-pending">0</div>
+            <div class="kpi-subtext">Active investigations</div>
+          </div>
+          <div class="kpi-card glass-panel kpi-critical">
+            <div class="kpi-label">CRITICAL THREATS</div>
+            <div class="kpi-value" id="stat-critical">0</div>
+            <div class="kpi-subtext">Urgent AI severity flag</div>
+          </div>
+          <div class="kpi-card glass-panel kpi-resolved">
+            <div class="kpi-label">RESOLVED CASES</div>
+            <div class="kpi-value" id="stat-resolved">0</div>
+            <div class="kpi-subtext">Actioned & closed</div>
+          </div>
+        </div>
+
+        <!-- Filter & Control Toolbar -->
+        <div class="toolbar glass-panel">
+          <div class="filter-controls">
+            <div class="filter-item">
+              <label>Status</label>
+              <select id="filter-status" onchange="loadAdminReports()">
+                <option value="">All Statuses</option>
+                <option value="SUBMITTED">SUBMITTED</option>
+                <option value="UNDER_REVIEW">UNDER_REVIEW</option>
+                <option value="RESOLVED">RESOLVED</option>
+                <option value="DISMISSED">DISMISSED</option>
+              </select>
+            </div>
+
+            <div class="filter-item">
+              <label>Category</label>
+              <select id="filter-category" onchange="loadAdminReports()">
+                <option value="">All Categories</option>
+                <option value="Security">Security</option>
+                <option value="Harassment">Harassment</option>
+                <option value="Corruption">Corruption</option>
+                <option value="Technical">Technical</option>
+                <option value="Other">Other</option>
+              </select>
+            </div>
+
+            <div class="filter-item">
+              <label>Severity</label>
+              <select id="filter-severity" onchange="loadAdminReports()">
+                <option value="">All Severities</option>
+                <option value="CRITICAL">🔴 CRITICAL</option>
+                <option value="HIGH">🟠 HIGH</option>
+                <option value="MEDIUM">🟡 MEDIUM</option>
+                <option value="LOW">🟢 LOW</option>
+              </select>
+            </div>
+
+            <div class="filter-item flex-grow">
+              <label>Search Case / Content</label>
+              <input 
+                type="text" 
+                id="filter-search" 
+                placeholder="Search keywords or case code..." 
+                oninput="debounceAdminSearch()"
+              >
+            </div>
+          </div>
+        </div>
+
+        <!-- Reports Table -->
+        <div class="table-container glass-panel">
+          <table class="reports-table">
+            <thead>
+              <tr>
+                <th>Case Code</th>
+                <th>Category</th>
+                <th>AI Classification & Conf.</th>
+                <th>Severity</th>
+                <th>Status</th>
+                <th>Related Cases</th>
+                <th>Submitted</th>
+                <th>Action</th>
+              </tr>
+            </thead>
+            <tbody id="reports-table-body">
+              <!-- Dynamically populated -->
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <!-- MODAL: Submission Success with Case Code -->
+  <div id="modal-success" class="modal-overlay hidden">
+    <div class="modal-card glass-panel">
+      <div class="modal-icon-badge">✅</div>
+      <h2 class="modal-title">Report Successfully Submitted</h2>
+      <p class="modal-subtitle">Your identity is completely protected. Save your private case code now—it is the only way to track progress.</p>
+
+      <div class="code-box-wrapper">
+        <div class="code-box" id="success-case-code">WD-8F4K-92QP-X7LM</div>
+        <button class="btn-copy" onclick="copySuccessCaseCode()">
+          <span id="copy-btn-text">📋 Copy Code</span>
+        </button>
+      </div>
+
+      <div class="ai-summary-card">
+        <div class="ai-summary-header">
+          <span class="ai-badge">🤖 Applied ML Analysis</span>
+          <span class="severity-badge-pill" id="modal-severity-badge">CRITICAL</span>
+        </div>
+        <div class="ai-metrics-row">
+          <div class="metric-pill">
+            <span class="label">Predicted Category</span>
+            <strong id="modal-ai-category">Security</strong>
+          </div>
+          <div class="metric-pill">
+            <span class="label">Confidence</span>
+            <strong id="modal-ai-confidence">94.2%</strong>
+          </div>
+          <div class="metric-pill">
+            <span class="label">PII Scrubbed</span>
+            <strong id="modal-ai-pii">2 items redacted</strong>
+          </div>
+        </div>
+      </div>
+
+      <div class="modal-actions">
+        <button class="btn-primary" onclick="proceedToTrackFromModal()">
+          <span>Track This Case Now</span>
+        </button>
+        <button class="btn-secondary" onclick="closeSuccessModal()">
+          <span>Submit Another</span>
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL / DRAWER: Moderator Report Inspector -->
+  <div id="modal-inspector" class="modal-overlay hidden">
+    <div class="modal-card glass-panel inspector-modal">
+      <div class="inspector-header">
+        <div>
+          <div class="label-muted">CASE DOSSIER</div>
+          <h2 class="inspector-code" id="inspect-case-code">WD-XXXX-XXXX-XXXX</h2>
+        </div>
+        <button class="btn-close" onclick="closeInspectorModal()">✕</button>
+      </div>
+
+      <div class="inspector-body">
+        <!-- Top metadata badges -->
+        <div class="inspector-tags-row">
+          <span class="badge" id="inspect-category">Security</span>
+          <span class="badge" id="inspect-severity">CRITICAL</span>
+          <span class="badge status-badge" id="inspect-status">UNDER_REVIEW</span>
+          <span class="badge pii-badge" id="inspect-pii-badge">🛡️ PII Scrubbed</span>
+        </div>
+
+        <!-- Description Box -->
+        <div class="dossier-section">
+          <h4>Sanitized Report Narrative</h4>
+          <div class="dossier-text" id="inspect-description"></div>
+          <div id="inspect-evidence-link" class="evidence-link-box hidden">
+            <span>🔗 Evidence Link: </span><a href="#" target="_blank" id="inspect-evidence-url"></a>
+          </div>
+        </div>
+
+        <!-- AI Insights & Tags -->
+        <div class="dossier-section ai-insights-box">
+          <h4>🤖 AI Intelligence & Extracted Themes</h4>
+          <div class="tags-container" id="inspect-tags-container"></div>
+          <div class="ai-conf-bar-wrapper">
+            <div class="conf-labels">
+              <span>ML Category: <strong id="inspect-ai-category">Security</strong></span>
+              <span id="inspect-ai-conf-text">Confidence: 94%</span>
+            </div>
+            <div class="conf-bar-track">
+              <div class="conf-bar-fill" id="inspect-ai-conf-bar" style="width: 90%;"></div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Related / Duplicate Incidents -->
+        <div class="dossier-section">
+          <h4>⚠️ Semantic Co-Relations & Potential Duplicate Incidents</h4>
+          <div id="inspect-similar-list" class="similar-cases-list">
+            <!-- Dynamically populated -->
+          </div>
+        </div>
+
+        <!-- Case History Timeline -->
+        <div class="dossier-section">
+          <h4>Investigation Audit Timeline</h4>
+          <div class="timeline-feed" id="inspect-timeline-feed"></div>
+        </div>
+
+        <!-- Moderator State Update Form -->
+        <div class="dossier-section update-action-box">
+          <h4>Update Status & Audit Note</h4>
+          <form id="status-update-form" onsubmit="handleStatusUpdateSubmit(event)">
+            <input type="hidden" id="update-report-id">
+            <div class="form-row">
+              <div class="form-group flex-1">
+                <label for="new-status-select">Transition State</label>
+                <select id="new-status-select" required>
+                  <option value="UNDER_REVIEW">UNDER_REVIEW (Active Investigation)</option>
+                  <option value="RESOLVED">RESOLVED (Action Completed / Closed)</option>
+                  <option value="DISMISSED">DISMISSED (Insufficient Evidence / False Report)</option>
+                </select>
+              </div>
+            </div>
+            <div class="form-group">
+              <label for="status-note-input">Investigation Log Note <span class="required">*</span></label>
+              <textarea 
+                id="status-note-input" 
+                rows="3" 
+                placeholder="Detailed audit log note visible to the reporter on their tracking portal..." 
+                required
+              ></textarea>
+            </div>
+            <div class="form-actions">
+              <button type="submit" class="btn-primary" id="btn-save-status">
+                <span class="btn-text">Record Status Transition</span>
+                <span class="btn-spinner hidden"></span>
+              </button>
+            </div>
+          </form>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Notification Toast -->
+  <div id="toast" class="toast hidden"></div>
+
+  <script src="/static/app.js"></script>
+</body>
+</html>

@@ -1,0 +1,25 @@
+# Python
+backend/.venv/
+.venv/
+__pycache__/
+*/__pycache__/
+*.py[cod]
+*$py.class
+*.joblib
+*.db
+*.sqlite3
+
+# Testing & Cache
+.pytest_cache/
+.coverage
+htmlcov/
+
+# Environment & Logs
+.env
+*.log
+
+# OS / Editor
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/

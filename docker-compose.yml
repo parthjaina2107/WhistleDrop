@@ -1,0 +1,37 @@
+version: '3.8'
+
+services:
+  whistledrop-api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    ports:
+      - "8000:8000"
+    environment:
+      - DATABASE_URL=postgresql://whistle_user:whistle_pass@db:5432/whistledrop_db
+      - SECRET_KEY=whistledrop-gdg-2026-production-super-secret-key
+      - DEFAULT_ADMIN_USERNAME=moderator
+      - DEFAULT_ADMIN_PASSWORD=WhistleDrop@2026
+    depends_on:
+      db:
+        condition: service_healthy
+
+  db:
+    image: postgres:15-alpine
+    restart: always
+    environment:
+      POSTGRES_USER: whistle_user
+      POSTGRES_PASSWORD: whistle_pass
+      POSTGRES_DB: whistledrop_db
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U whistle_user -d whistledrop_db"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+volumes:
+  postgres_data:
